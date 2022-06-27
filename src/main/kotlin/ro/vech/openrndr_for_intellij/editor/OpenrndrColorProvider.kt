@@ -3,9 +3,12 @@ package ro.vech.openrndr_for_intellij.editor
 import com.intellij.openapi.editor.ElementColorProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.uast.evaluation.uValueOf
 import org.jetbrains.uast.getUCallExpression
 import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.util.isConstructorCall
+import org.jetbrains.uast.values.UFloatConstant
 import org.jetbrains.uast.values.UIntConstant
 import org.jetbrains.uast.values.UStringConstant
 import java.awt.Color
@@ -13,32 +16,53 @@ import java.awt.Color
 class OpenrndrColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
-        val uElement = element.toUElement() ?: return null
-        val uCallExpression = uElement.getUCallExpression() ?: return null
+        if (element.parent?.parent !is KtCallExpression) return null
+        val uCallExpression = element.toUElement()?.getUCallExpression() ?: return null
         if (uCallExpression.getExpressionType()?.canonicalText != "org.openrndr.color.ColorRGBa") return null
 
         val valueArgs = uCallExpression.valueArguments
-        return if (uCallExpression.methodIdentifier?.name == "fromHex") {
-            when (val hex = valueArgs.firstOrNull()?.uValueOf()) {
-                is UIntConstant -> fromHex(hex.value)
-                is UStringConstant -> fromHex(hex.value)
-                else -> null
-            }
-        } else {
-            val floats = valueArgs.map {
-                (it.uValueOf()?.toConstant()?.value as? Number)?.toFloat() ?: return null
-            }
-            when (floats.size) {
-                3 -> {
-                    val (r, g, b) = floats
-                    Color(r, g, b)
+        return when {
+            uCallExpression.methodName == "rgb" -> {
+                when (val firstArg = valueArgs.firstOrNull()?.uValueOf()) {
+                    is UFloatConstant -> {
+                        val floats = valueArgs.map {
+                            (it.uValueOf()?.toConstant()?.value as? Number)?.toFloat() ?: return null
+                        }
+                        when (floats.size) {
+                            1 -> Color(floats[0], floats[0], floats[0])
+                            2 -> Color(floats[0], floats[1], floats[0])
+                            3 -> Color(floats[0], floats[1], floats[2])
+                            else -> null
+                        }
+                    }
+                    is UStringConstant -> fromHex(firstArg.value)
+                    else -> null
                 }
-                4, 5 -> {
-                    val (r, g, b, a) = floats
-                    Color(r, g, b, a)
-                }
-                else -> null
             }
+            uCallExpression.methodName == "rgba" && valueArgs.size == 4 -> {
+                val floats = valueArgs.map {
+                    (it.uValueOf()?.toConstant()?.value as? Number)?.toFloat() ?: return null
+                }
+                Color(floats[0], floats[1], floats[2], floats[3])
+            }
+            uCallExpression.methodName == "fromHex" -> {
+                when (val hex = valueArgs.firstOrNull()?.uValueOf()) {
+                    is UIntConstant -> fromHex(hex.value)
+                    is UStringConstant -> fromHex(hex.value)
+                    else -> null
+                }
+            }
+            uCallExpression.isConstructorCall() -> {
+                val floats = valueArgs.map {
+                    (it.uValueOf()?.toConstant()?.value as? Number)?.toFloat() ?: return null
+                }
+                when (floats.size) {
+                    3 -> Color(floats[0], floats[1], floats[2])
+                    4, 5 -> Color(floats[0], floats[1], floats[2], floats[3])
+                    else -> null
+                }
+            }
+            else -> null
         }
     }
 
