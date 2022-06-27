@@ -13,17 +13,15 @@ import java.awt.Color
 class OpenrndrColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
-
         val uElement = element.toUElement() ?: return null
         val uCallExpression = uElement.getUCallExpression() ?: return null
-
         if (uCallExpression.getExpressionType()?.canonicalText != "org.openrndr.color.ColorRGBa") return null
 
         val valueArgs = uCallExpression.valueArguments
         return if (uCallExpression.methodIdentifier?.name == "fromHex") {
             when (val hex = valueArgs.firstOrNull()?.uValueOf()) {
-                is UStringConstant -> fromHex(hex.value)
                 is UIntConstant -> fromHex(hex.value)
+                is UStringConstant -> fromHex(hex.value)
                 else -> null
             }
         } else {
@@ -48,12 +46,19 @@ class OpenrndrColorProvider : ElementColorProvider {
     }
 
     private companion object {
-        fun fromHex(hex: Int): Color {
-            return Color(hex shr 16 and 0xff, hex shr 8 and 0xff, hex and 0xff)
-        }
+        fun fromHex(hex: Int): Color = Color(hex)
 
-        fun fromHex(hex: String): Color {
-            return Color.decode(hex)
+        fun fromHex(hex: String): Color? {
+            val hexNormalized = when (hex.length) {
+                4 -> String(charArrayOf('#', hex[1], hex[1], hex[2], hex[2], hex[3], hex[3]))
+                7 -> hex
+                else -> return null
+            }
+            return try {
+                Color.decode(hexNormalized)
+            } catch (_: NumberFormatException) {
+                null
+            }
         }
     }
 }
