@@ -9,6 +9,12 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    maven(url = "https://maven.openrndr.org")
+}
+
+dependencies {
+//    implementation("org.openrndr:openrndr-color:0.4.0-rc.7")
+//    implementation("org.openrndr:openrndr-math:0.4.0-rc.7")
 }
 
 // Configure Gradle IntelliJ Plugin
