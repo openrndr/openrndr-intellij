@@ -1,1 +1,1 @@
-rootProject.name = "openrndr-for-intellij"
+rootProject.name = "openrndr-intellij"

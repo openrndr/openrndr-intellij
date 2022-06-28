@@ -1,4 +1,4 @@
-package ro.vech.openrndr_for_intellij.editor
+package ro.vech.openrndr_intellij.editor
 
 import com.intellij.openapi.editor.ElementColorProvider
 import com.intellij.psi.PsiElement
