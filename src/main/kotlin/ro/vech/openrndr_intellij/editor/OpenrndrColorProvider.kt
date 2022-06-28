@@ -61,11 +61,36 @@ class OpenrndrColorProvider : ElementColorProvider {
                     else -> null
                 }
             }
-            "<init>" -> {
+            "hsv" -> {
+                if (args.size != 3) return null
                 val floats = args.toFloats() ?: return null
-                when (floats.size) {
-                    3 -> Color(floats[0], floats[1], floats[2])
-                    4, 5 -> Color(floats[0], floats[1], floats[2], floats[3])
+                Color.getHSBColor(floats[0] / 360.0f, floats[1], floats[2])
+            }
+            "hsva" -> {
+                if (args.size != 4) return null
+                val floats = args.toFloats() ?: return null
+                val alpha = (floats[3] * 255.0f).toInt()
+                val rgb = Color.HSBtoRGB(floats[0] / 360.0f, floats[1], floats[2])
+                Color(rgbWithAlpha(rgb, alpha), true)
+            }
+            "<init>" -> {
+                val className = descriptor.containingDeclaration.name.asString()
+                val floats = args.take(4).toFloats() ?: return null
+                when (className) {
+                    "ColorRGBa" -> when (args.size) {
+                        3 -> Color(floats[0], floats[1], floats[2])
+                        4, 5 -> Color(floats[0], floats[1], floats[2], floats[3])
+                        else -> null
+                    }
+                    "ColorHSVa" -> when (args.size) {
+                        3 -> Color.getHSBColor(floats[0] / 360.0f, floats[1], floats[2])
+                        4, 5 -> {
+                            val alpha = (floats[3] * 255.0f).toInt()
+                            val rgb = Color.HSBtoRGB(floats[0] / 360.0f, floats[1], floats[2])
+                            Color(rgbWithAlpha(rgb, alpha), true)
+                        }
+                        else -> null
+                    }
                     else -> null
                 }
             }
@@ -104,5 +129,7 @@ class OpenrndrColorProvider : ElementColorProvider {
                 (it.value as? Number)?.toFloat() ?: return null
             }
         }
+
+        fun rgbWithAlpha(rgb: Int, alpha: Int) = (alpha and 0xff shl 24) xor (rgb shl 8 ushr 8)
     }
 }
