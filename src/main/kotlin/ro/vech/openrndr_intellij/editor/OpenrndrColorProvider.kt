@@ -4,6 +4,7 @@ import com.intellij.openapi.editor.ElementColorProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
+import org.jetbrains.kotlin.descriptors.containingPackage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
 import org.jetbrains.kotlin.idea.core.mapArgumentsToParameters
@@ -13,9 +14,7 @@ import org.jetbrains.kotlin.psi.ValueArgument
 import org.jetbrains.kotlin.resolve.calls.callUtil.getCall
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.evaluation.uValueOf
-import org.jetbrains.uast.getUCallExpression
 import org.jetbrains.uast.toUElement
-import org.jetbrains.uast.util.isConstructorCall
 import org.jetbrains.uast.values.*
 import java.awt.Color
 
@@ -25,14 +24,17 @@ class OpenrndrColorProvider : ElementColorProvider {
         val parent = (element.parent as? KtNameReferenceExpression) ?: return null
         if (parent.parent !is KtCallExpression) return null
 
-        val uCallExpression = element.toUElement()?.getUCallExpression() ?: return null
-        if (uCallExpression.getExpressionType()?.canonicalText != "org.openrndr.color.ColorRGBa") return null
+        val resolvedCall = parent.resolveToCall() ?: return null
+        val descriptor = resolvedCall.resultingDescriptor
+        if (descriptor.containingPackage()?.asString() != "org.openrndr.color") return null
 
-        val argToParamMap = parent.mapArgumentsToParameters() ?: return null
+        val bindingContext = parent.analyze()
+        val call = parent.getCall(bindingContext) ?: return null
+        val argToParamMap = call.mapArgumentsToParameters(descriptor)
         val args = argToParamMap.getArgumentsInCanonicalOrder() ?: return null
 
-        return when {
-            uCallExpression.methodName == "rgb" -> {
+        return when (descriptor.name.asString()) {
+            "rgb" -> {
                 when (val firstArg = args.firstOrNull()) {
                     is UFloatConstant -> {
                         val floats = args.toFloats() ?: return null
@@ -47,18 +49,19 @@ class OpenrndrColorProvider : ElementColorProvider {
                     else -> null
                 }
             }
-            uCallExpression.methodName == "rgba" && args.size == 4 -> {
+            "rgba" -> {
+                if (args.size != 4) return null
                 val floats = args.toFloats() ?: return null
                 Color(floats[0], floats[1], floats[2], floats[3])
             }
-            uCallExpression.methodName == "fromHex" -> {
+            "fromHex" -> {
                 when (val hex = args.firstOrNull()) {
                     is UIntConstant -> fromHex(hex.value)
                     is UStringConstant -> fromHex(hex.value)
                     else -> null
                 }
             }
-            uCallExpression.isConstructorCall() -> {
+            "<init>" -> {
                 val floats = args.toFloats() ?: return null
                 when (floats.size) {
                     3 -> Color(floats[0], floats[1], floats[2])
@@ -94,12 +97,6 @@ class OpenrndrColorProvider : ElementColorProvider {
                 val uExpression = it.first.getArgumentExpression()?.toUElement() as? UExpression ?: return null
                 uExpression.uValueOf()?.toConstant() ?: return null
             }
-        }
-
-        fun KtNameReferenceExpression.mapArgumentsToParameters(): Map<ValueArgument, ValueParameterDescriptor>? {
-            val call = getCall(analyze()) ?: return null
-            val resolvedCall = resolveToCall() ?: return null
-            return call.mapArgumentsToParameters(resolvedCall.resultingDescriptor)
         }
 
         fun Iterable<UConstant>.toFloats(): List<Float>? {
