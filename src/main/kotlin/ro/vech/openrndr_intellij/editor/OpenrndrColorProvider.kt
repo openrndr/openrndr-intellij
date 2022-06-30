@@ -11,11 +11,13 @@ import org.jetbrains.kotlin.idea.core.mapArgumentsToParameters
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.ValueArgument
+import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.callUtil.getCall
-import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.evaluation.uValueOf
-import org.jetbrains.uast.toUElement
-import org.jetbrains.uast.values.*
+import org.jetbrains.kotlin.resolve.constants.IntegerValueConstant
+import org.jetbrains.kotlin.resolve.constants.IntegerValueTypeConstant
+import org.jetbrains.kotlin.resolve.constants.TypedCompileTimeConstant
+import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
+import org.jetbrains.kotlin.types.TypeUtils
 import java.awt.Color
 
 class OpenrndrColorProvider : ElementColorProvider {
@@ -31,12 +33,12 @@ class OpenrndrColorProvider : ElementColorProvider {
         val bindingContext = parent.analyze()
         val call = parent.getCall(bindingContext) ?: return null
         val argToParamMap = call.mapArgumentsToParameters(descriptor)
-        val args = argToParamMap.getArgumentsInCanonicalOrder() ?: return null
+        val args = argToParamMap.getArgumentsInCanonicalOrder(bindingContext) ?: return null
 
         return when (descriptor.name.asString()) {
             "rgb" -> {
                 when (val firstArg = args.firstOrNull()) {
-                    is UFloatConstant -> {
+                    is Double -> {
                         val floats = args.toFloats() ?: return null
                         when (floats.size) {
                             1 -> Color(floats[0], floats[0], floats[0])
@@ -45,7 +47,7 @@ class OpenrndrColorProvider : ElementColorProvider {
                             else -> null
                         }
                     }
-                    is UStringConstant -> fromHex(firstArg.value)
+                    is String -> fromHex(firstArg)
                     else -> null
                 }
             }
@@ -56,8 +58,8 @@ class OpenrndrColorProvider : ElementColorProvider {
             }
             "fromHex" -> {
                 when (val hex = args.firstOrNull()) {
-                    is UIntConstant -> fromHex(hex.value)
-                    is UStringConstant -> fromHex(hex.value)
+                    is Int -> fromHex(hex)
+                    is String -> fromHex(hex)
                     else -> null
                 }
             }
@@ -117,16 +119,26 @@ class OpenrndrColorProvider : ElementColorProvider {
             }
         }
 
-        fun Map<ValueArgument, ValueParameterDescriptor>.getArgumentsInCanonicalOrder(): Collection<UConstant>? {
+        /**
+         * Also resolves arguments to constant values.
+         */
+        fun Map<ValueArgument, ValueParameterDescriptor>.getArgumentsInCanonicalOrder(bindingContext: BindingContext): Collection<Any>? {
             return toList().sortedBy { it.second.index }.map {
-                val uExpression = it.first.getArgumentExpression()?.toUElement() as? UExpression ?: return null
-                uExpression.uValueOf()?.toConstant() ?: return null
+                val expression = it.first.getArgumentExpression() ?: return null
+                when (val constant = ConstantExpressionEvaluator.getConstant(expression, bindingContext)) {
+                    is IntegerValueTypeConstant -> (constant.toConstantValue(TypeUtils.DONT_CARE) as? IntegerValueConstant)?.value
+                    is TypedCompileTimeConstant -> constant.constantValue.value
+                    else -> null
+                } ?: return null
             }
         }
 
-        fun Iterable<UConstant>.toFloats(): List<Float>? {
+        /**
+         * Assumes you have `Iterable<Number>`.
+         */
+        fun Iterable<Any>.toFloats(): List<Float>? {
             return map {
-                (it.value as? Number)?.toFloat() ?: return null
+                (it as? Number)?.toFloat() ?: return null
             }
         }
 
