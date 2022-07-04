@@ -1,6 +1,8 @@
 package ro.vech.openrndr_intellij.editor
 
+import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.editor.ElementColorProvider
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
@@ -8,9 +10,7 @@ import org.jetbrains.kotlin.descriptors.containingPackage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
 import org.jetbrains.kotlin.idea.core.mapArgumentsToParameters
-import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
-import org.jetbrains.kotlin.psi.ValueArgument
+import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.callUtil.getCall
 import org.jetbrains.kotlin.resolve.constants.IntegerValueConstant
@@ -18,24 +18,28 @@ import org.jetbrains.kotlin.resolve.constants.IntegerValueTypeConstant
 import org.jetbrains.kotlin.resolve.constants.TypedCompileTimeConstant
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
 import org.jetbrains.kotlin.types.TypeUtils
+import org.openrndr.color.ColorRGBa
+import org.openrndr.color.ConvertibleToColorRGBa
 import java.awt.Color
+import kotlin.reflect.full.memberProperties
 
 class OpenrndrColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
         val parent = (element.parent as? KtNameReferenceExpression) ?: return null
-        if (parent.parent !is KtCallExpression) return null
+        if (parent.parent !is KtCallExpression && parent.parent !is KtDotQualifiedExpression) return null
 
         val resolvedCall = parent.resolveToCall() ?: return null
         val descriptor = resolvedCall.resultingDescriptor
-        if (descriptor.containingPackage()?.asString() != "org.openrndr.color") return null
+        val packageName = descriptor.containingPackage()?.asString()
+        if (packageName != "org.openrndr.color" && packageName != "org.openrndr.extras.color.presets") return null
 
         val bindingContext = parent.analyze()
         val call = parent.getCall(bindingContext) ?: return null
         val argToParamMap = call.mapArgumentsToParameters(descriptor)
         val args = argToParamMap.getArgumentsInCanonicalOrder(bindingContext) ?: return null
 
-        return when (descriptor.name.asString()) {
+        return when (val descriptorName = descriptor.name.asString()) {
             "rgb" -> {
                 when (val firstArg = args.firstOrNull()) {
                     is Double -> {
@@ -96,11 +100,15 @@ class OpenrndrColorProvider : ElementColorProvider {
                     else -> null
                 }
             }
-            else -> null
+            else -> staticColors[descriptorName]?.toAWTColor()
         }
     }
 
     override fun setColorTo(element: PsiElement, color: Color) {
+        val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
+        val command = {}
+        CommandProcessor.getInstance()
+            .executeCommand(element.project, command, "Change Color", null, document)
     }
 
     private companion object {
@@ -143,5 +151,37 @@ class OpenrndrColorProvider : ElementColorProvider {
         }
 
         fun rgbWithAlpha(rgb: Int, alpha: Int) = (alpha and 0xff shl 24) xor (rgb shl 8 ushr 8)
+
+        fun ConvertibleToColorRGBa.toAWTColor(): Color {
+            val (r, g, b, a) = this as? ColorRGBa ?: toRGBa()
+            return Color(
+                (r * 255).toInt(),
+                (g * 255).toInt(),
+                (b * 255).toInt(),
+                (a * 255).toInt()
+            )
+        }
+
+        fun Color.toColorRGBa(): ColorRGBa {
+            return ColorRGBa(
+                red / 255.0,
+                green / 255.0,
+                blue / 255.0,
+                alpha / 255.0
+            )
+        }
+
+        val staticColors: Map<String, ColorRGBa> by lazy {
+            val map = mutableMapOf<String, ColorRGBa>()
+            for (property in ColorRGBa.Companion::class.memberProperties) {
+                map[property.name] = property.getter.call(ColorRGBa.Companion) as ColorRGBa
+            }
+            val extensionColorsJavaClass = Class.forName("org.openrndr.extras.color.presets.ColorsKt")
+            for (method in extensionColorsJavaClass.declaredMethods) {
+                // Every generated java method is prefixed with "get"
+                map[method.name.drop(3)] = method.invoke(ColorRGBa::javaClass, ColorRGBa.Companion) as ColorRGBa
+            }
+            map
+        }
     }
 }

@@ -13,8 +13,10 @@ repositories {
 }
 
 dependencies {
-//    implementation("org.openrndr:openrndr-color:0.4.0-rc.7")
-//    implementation("org.openrndr:openrndr-math:0.4.0-rc.7")
+    implementation("org.openrndr:openrndr-color:0.4.0-rc.7")
+    implementation("org.openrndr:openrndr-math:0.4.0-rc.7")
+    implementation("org.openrndr.extra:orx-color:0.4.0-rc.8")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.7.0")
 }
 
 // Configure Gradle IntelliJ Plugin
