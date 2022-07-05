@@ -100,13 +100,14 @@ class OpenrndrColorProvider : ElementColorProvider {
                     else -> null
                 }
             }
-            else -> staticColors[descriptorName]?.toAWTColor()
+            else -> staticColorMap[descriptorName]
         }
     }
 
     override fun setColorTo(element: PsiElement, color: Color) {
         val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
         val command = {}
+        // TODO: Should use message bundle for command name
         CommandProcessor.getInstance()
             .executeCommand(element.project, command, "Change Color", null, document)
     }
@@ -171,7 +172,7 @@ class OpenrndrColorProvider : ElementColorProvider {
             )
         }
 
-        val staticColors: Map<String, ColorRGBa> by lazy {
+        val staticColorMap: Map<String, Color> = let {
             val map = mutableMapOf<String, ColorRGBa>()
             for (property in ColorRGBa.Companion::class.memberProperties) {
                 map[property.name] = property.getter.call(ColorRGBa.Companion) as ColorRGBa
@@ -181,7 +182,7 @@ class OpenrndrColorProvider : ElementColorProvider {
                 // Every generated java method is prefixed with "get"
                 map[method.name.drop(3)] = method.invoke(ColorRGBa::javaClass, ColorRGBa.Companion) as ColorRGBa
             }
-            map
+            map.mapValues { it.value.toAWTColor() }
         }
     }
 }
