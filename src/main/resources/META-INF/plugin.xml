@@ -24,6 +24,6 @@
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <colorProvider implementation="ro.vech.openrndr_intellij.editor.OpenrndrColorProvider"/>
+        <colorProvider implementation="ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider"/>
     </extensions>
 </idea-plugin>

@@ -23,7 +23,7 @@ import org.openrndr.color.ConvertibleToColorRGBa
 import java.awt.Color
 import kotlin.reflect.full.memberProperties
 
-class OpenrndrColorProvider : ElementColorProvider {
+class ColorRGBaColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
         val parent = (element.parent as? KtNameReferenceExpression) ?: return null

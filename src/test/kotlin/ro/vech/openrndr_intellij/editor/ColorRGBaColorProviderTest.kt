@@ -8,7 +8,7 @@ import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.idea.KotlinFileType
 import java.awt.Color
 
-class OpenrndrColorProviderTest : BasePlatformTestCase() {
+class ColorRGBaColorProviderTest : BasePlatformTestCase() {
 
     // TODO: Add dependency on openrndr-color
     override fun getProjectDescriptor(): LightProjectDescriptor? {
