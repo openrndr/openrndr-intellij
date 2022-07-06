@@ -5,6 +5,8 @@ import com.intellij.openapi.editor.ElementColorProvider
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
+import com.intellij.util.containers.map2Array
+import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.descriptors.containingPackage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
@@ -17,10 +19,13 @@ import org.jetbrains.kotlin.resolve.constants.IntegerValueConstant
 import org.jetbrains.kotlin.resolve.constants.IntegerValueTypeConstant
 import org.jetbrains.kotlin.resolve.constants.TypedCompileTimeConstant
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
+import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.jetbrains.kotlin.types.TypeUtils
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.ConvertibleToColorRGBa
 import java.awt.Color
+import java.text.DecimalFormat
+import java.text.NumberFormat
 import kotlin.reflect.full.memberProperties
 
 class ColorRGBaColorProvider : ElementColorProvider {
@@ -39,7 +44,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
         val argToParamMap = call.mapArgumentsToParameters(descriptor)
         val args = argToParamMap.getArgumentsInCanonicalOrder(bindingContext) ?: return null
 
-        return when (val descriptorName = descriptor.name.asString()) {
+        return when (val descriptorName = descriptor.getImportableDescriptor().name.asString()) {
             "rgb" -> {
                 when (val firstArg = args.firstOrNull()) {
                     is Double -> {
@@ -79,23 +84,22 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 val rgb = Color.HSBtoRGB(floats[0] / 360.0f, floats[1], floats[2])
                 Color(rgbWithAlpha(rgb, alpha), true)
             }
-            "<init>" -> {
-                val className = descriptor.containingDeclaration.name.asString()
+            "ColorRGBa" -> {
                 val floats = args.take(4).toFloats() ?: return null
-                when (className) {
-                    "ColorRGBa" -> when (args.size) {
-                        3 -> Color(floats[0], floats[1], floats[2])
-                        4, 5 -> Color(floats[0], floats[1], floats[2], floats[3])
-                        else -> null
-                    }
-                    "ColorHSVa" -> when (args.size) {
-                        3 -> Color.getHSBColor(floats[0] / 360.0f, floats[1], floats[2])
-                        4, 5 -> {
-                            val alpha = (floats[3] * 255.0f).toInt()
-                            val rgb = Color.HSBtoRGB(floats[0] / 360.0f, floats[1], floats[2])
-                            Color(rgbWithAlpha(rgb, alpha), true)
-                        }
-                        else -> null
+                when (args.size) {
+                    3 -> Color(floats[0], floats[1], floats[2])
+                    4, 5 -> Color(floats[0], floats[1], floats[2], floats[3])
+                    else -> null
+                }
+            }
+            "ColorHSVa" -> {
+                val floats = args.take(4).toFloats() ?: return null
+                when (args.size) {
+                    3 -> Color.getHSBColor(floats[0] / 360.0f, floats[1], floats[2])
+                    4, 5 -> {
+                        val alpha = (floats[3] * 255.0f).toInt()
+                        val rgb = Color.HSBtoRGB(floats[0] / 360.0f, floats[1], floats[2])
+                        Color(rgbWithAlpha(rgb, alpha), true)
                     }
                     else -> null
                 }
@@ -105,8 +109,20 @@ class ColorRGBaColorProvider : ElementColorProvider {
     }
 
     override fun setColorTo(element: PsiElement, color: Color) {
+        if (element !is LeafPsiElement) return
+        val parent = (element.context as? KtNameReferenceExpression) ?: return
         val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
-        val command = {}
+        val command = Runnable {
+            val resolvedCall = parent.resolveToCall() ?: return@Runnable
+            val descriptor = resolvedCall.resultingDescriptor
+            val colorRGBaDescriptor = ColorRGBaDescriptor.getDescriptorType(descriptor) ?: return@Runnable
+            val psiFactory = KtPsiFactory(element)
+            val newExpression = psiFactory.createValueArgumentListByPattern(
+                colorRGBaDescriptor.expressionPattern,
+                *colorRGBaDescriptor.expressionArguments(color)
+            )
+            parent.nextSibling.replace(newExpression)
+        }
         // TODO: Should use message bundle for command name
         CommandProcessor.getInstance()
             .executeCommand(element.project, command, "Change Color", null, document)
@@ -183,6 +199,77 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 map[method.name.drop(3)] = method.invoke(ColorRGBa::javaClass, ColorRGBa.Companion) as ColorRGBa
             }
             map.mapValues { it.value.toAWTColor() }
+        }
+
+        enum class ColorRGBaDescriptor {
+            FromHex {
+                override val expressionPattern: String = "($0)"
+                override fun expressionArguments(color: Color): Array<String> {
+                    val hex = (color.rgb and 0xffffff).toString(16)
+                    return arrayOf("0x$hex")
+                }
+            },
+            RGB {
+                override val expressionPattern: String = "($0, $1, $2)"
+                override fun expressionArguments(color: Color): Array<String> {
+                    return arrayOf(color.red / 255.0, color.blue / 255.0, color.green / 255.0).map2Array(numberFormatter::format)
+                }
+            },
+            RGBA {
+                override val expressionPattern: String = "($0, $1, $2, $3)"
+                override fun expressionArguments(color: Color): Array<String> {
+                    return arrayOf(color.red / 255.0, color.blue / 255.0, color.green / 255.0, color.alpha / 255.0).map2Array(numberFormatter::format)
+                }
+            },
+            HSV {
+                override val expressionPattern: String = "($0, $1, $2)"
+                override fun expressionArguments(color: Color): Array<String> {
+                    val hsvColor = color.toColorRGBa().toHSVa()
+                    return arrayOf(hsvColor.h, hsvColor.s, hsvColor.v).map2Array(numberFormatter::format)
+                }
+            },
+            HSVA {
+                override val expressionPattern: String = "($0, $1, $2, $3)"
+                override fun expressionArguments(color: Color): Array<String> {
+                    val hsvColor = color.toColorRGBa().toHSVa()
+                    return arrayOf(hsvColor.h, hsvColor.s, hsvColor.v, hsvColor.a).map2Array(numberFormatter::format)
+                }
+            },
+            ColorRGBa {
+                override val expressionPattern: String = "($0, $1, $2, $3)"
+                override fun expressionArguments(color: Color): Array<String> {
+                    return arrayOf(color.red / 255.0, color.blue / 255.0, color.green / 255.0, color.alpha / 255.0).map2Array(numberFormatter::format)
+                }
+            },
+            ColorHSVa {
+                override val expressionPattern: String = "($0, $1, $2, $3)"
+                override fun expressionArguments(color: Color): Array<String> {
+                    val hsvColor = color.toColorRGBa().toHSVa()
+                    return arrayOf(hsvColor.h, hsvColor.s, hsvColor.v, hsvColor.a).map2Array(numberFormatter::format)
+                }
+            };
+
+            abstract val expressionPattern: String
+            abstract fun expressionArguments(color: Color): Array<String>
+
+            companion object {
+                fun getDescriptorType(targetDescriptor: CallableDescriptor): ColorRGBaDescriptor? {
+                    return when (targetDescriptor.getImportableDescriptor().name.asString()) {
+                        "fromHex" -> FromHex
+                        "rgb" -> RGB
+                        "rgba" -> RGBA
+                        "hsv" -> HSV
+                        "hsva" -> HSVA
+                        "ColorRGBa" -> ColorRGBa
+                        "ColorHSVa" -> ColorHSVa
+                        else -> null
+                    }
+                }
+
+                val numberFormatter: NumberFormat = DecimalFormat.getNumberInstance().also {
+                    it.maximumFractionDigits = 3
+                }
+            }
         }
     }
 }
