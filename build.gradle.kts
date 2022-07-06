@@ -11,13 +11,14 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    mavenLocal()
     maven(url = "https://maven.openrndr.org")
 }
 
 dependencies {
-    implementation("org.openrndr:openrndr-color:0.4.0-rc.7")
-    implementation("org.openrndr:openrndr-math:0.4.0-rc.7")
-    implementation("org.openrndr.extra:orx-color:0.4.0-rc.8")
+    implementation("org.openrndr:openrndr-color:0.5.1-SNAPSHOT")
+    implementation("org.openrndr:openrndr-math:0.5.1-SNAPSHOT")
+    implementation("org.openrndr.extra:orx-color:0.5.1-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.7.0")
 }
 
