@@ -5,7 +5,6 @@ import com.intellij.openapi.editor.ElementColorProvider
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
-import com.intellij.util.containers.map2Array
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.descriptors.containingPackage
@@ -13,6 +12,7 @@ import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
 import org.jetbrains.kotlin.idea.core.mapArgumentsToParameters
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.callUtil.getCall
 import org.jetbrains.kotlin.resolve.constants.IntegerValueConstant
@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.jetbrains.kotlin.types.TypeUtils
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.ConvertibleToColorRGBa
+import org.openrndr.math.CastableToVector4
 import java.awt.Color
 import java.text.DecimalFormat
 import java.text.NumberFormat
@@ -117,15 +118,35 @@ class ColorRGBaColorProvider : ElementColorProvider {
             val descriptor = resolvedCall.resultingDescriptor
             val colorRGBaDescriptor = ColorRGBaDescriptor.getDescriptorType(descriptor) ?: return@Runnable
             val psiFactory = KtPsiFactory(element)
-            val newExpression = psiFactory.createValueArgumentListByPattern(
-                colorRGBaDescriptor.expressionPattern,
-                *colorRGBaDescriptor.expressionArguments(color)
-            )
-            parent.nextSibling.replace(newExpression)
+
+            // ConvertLambdaReferenceToIntention
+            val outerCallExpression = parent.getStrictParentOfType<KtCallExpression>()
+            val outerCallContext = outerCallExpression?.analyze() ?: return@Runnable
+
+            val valueArguments = outerCallExpression.valueArguments
+
+            val call = outerCallExpression.getCall(outerCallContext) ?: return@Runnable
+            val argToParamMap = call.mapArgumentsToParameters(descriptor)
+            val colorArguments = colorRGBaDescriptor.expressionArguments(color)
+
+            val newArgumentList = psiFactory.buildValueArgumentList {
+                appendFixedText("(")
+                // These arguments are definitely in the right order
+                valueArguments.forEach { argument ->
+                    val parameter = argToParamMap[argument] ?: return@forEach
+                    if (argument.isNamed()) {
+                        appendName(parameter.name)
+                        appendFixedText(" = ")
+                    }
+                    appendExpression(psiFactory.createExpression(colorArguments[parameter.index]))
+                    appendFixedText(", ")
+                }
+                appendFixedText(")")
+            }
+            parent.nextSibling.replace(newArgumentList)
         }
         // TODO: Should use message bundle for command name
-        CommandProcessor.getInstance()
-            .executeCommand(element.project, command, "Change Color", null, document)
+        CommandProcessor.getInstance().executeCommand(element.project, command, "Change Color", null, document)
     }
 
     private companion object {
@@ -172,19 +193,13 @@ class ColorRGBaColorProvider : ElementColorProvider {
         fun ConvertibleToColorRGBa.toAWTColor(): Color {
             val (r, g, b, a) = this as? ColorRGBa ?: toRGBa()
             return Color(
-                (r * 255).toInt(),
-                (g * 255).toInt(),
-                (b * 255).toInt(),
-                (a * 255).toInt()
+                (r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt(), (a * 255).toInt()
             )
         }
 
         fun Color.toColorRGBa(): ColorRGBa {
             return ColorRGBa(
-                red / 255.0,
-                green / 255.0,
-                blue / 255.0,
-                alpha / 255.0
+                red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0
             )
         }
 
@@ -203,71 +218,58 @@ class ColorRGBaColorProvider : ElementColorProvider {
 
         enum class ColorRGBaDescriptor {
             FromHex {
-                override val expressionPattern: String = "($0)"
+                override val conversionFunction = ColorRGBa::toRGBa
                 override fun expressionArguments(color: Color): Array<String> {
                     val hex = (color.rgb and 0xffffff).toString(16)
                     return arrayOf("0x$hex")
                 }
             },
             RGB {
-                override val expressionPattern: String = "($0, $1, $2)"
+                override val conversionFunction = ColorRGBa::toRGBa
                 override fun expressionArguments(color: Color): Array<String> {
-                    return arrayOf(color.red / 255.0, color.blue / 255.0, color.green / 255.0).map2Array(numberFormatter::format)
-                }
-            },
-            RGBA {
-                override val expressionPattern: String = "($0, $1, $2, $3)"
-                override fun expressionArguments(color: Color): Array<String> {
-                    return arrayOf(color.red / 255.0, color.blue / 255.0, color.green / 255.0, color.alpha / 255.0).map2Array(numberFormatter::format)
+                    return doubleArrayOf(
+                        color.red / 255.0, color.green / 255.0, color.blue / 255.0, color.alpha / 255.0
+                    ).formatNumbers()
                 }
             },
             HSV {
-                override val expressionPattern: String = "($0, $1, $2)"
+                override val conversionFunction = ColorRGBa::toHSVa
+            },
+            ColorRGBaConstructor {
+                override val conversionFunction = ColorRGBa::toRGBa
                 override fun expressionArguments(color: Color): Array<String> {
-                    val hsvColor = color.toColorRGBa().toHSVa()
-                    return arrayOf(hsvColor.h, hsvColor.s, hsvColor.v).map2Array(numberFormatter::format)
+                    return doubleArrayOf(
+                        color.red / 255.0, color.green / 255.0, color.blue / 255.0, color.alpha / 255.0
+                    ).formatNumbers()
                 }
             },
-            HSVA {
-                override val expressionPattern: String = "($0, $1, $2, $3)"
-                override fun expressionArguments(color: Color): Array<String> {
-                    val hsvColor = color.toColorRGBa().toHSVa()
-                    return arrayOf(hsvColor.h, hsvColor.s, hsvColor.v, hsvColor.a).map2Array(numberFormatter::format)
-                }
-            },
-            ColorRGBa {
-                override val expressionPattern: String = "($0, $1, $2, $3)"
-                override fun expressionArguments(color: Color): Array<String> {
-                    return arrayOf(color.red / 255.0, color.blue / 255.0, color.green / 255.0, color.alpha / 255.0).map2Array(numberFormatter::format)
-                }
-            },
-            ColorHSVa {
-                override val expressionPattern: String = "($0, $1, $2, $3)"
-                override fun expressionArguments(color: Color): Array<String> {
-                    val hsvColor = color.toColorRGBa().toHSVa()
-                    return arrayOf(hsvColor.h, hsvColor.s, hsvColor.v, hsvColor.a).map2Array(numberFormatter::format)
-                }
+            ColorHSVaConstructor {
+                override val conversionFunction = ColorRGBa::toHSVa
             };
 
-            abstract val expressionPattern: String
-            abstract fun expressionArguments(color: Color): Array<String>
+            abstract val conversionFunction: (ColorRGBa) -> CastableToVector4
+            open fun expressionArguments(color: Color): Array<String> =
+                conversionFunction.invoke(color.toColorRGBa()).toVector4().toDoubleArray().formatNumbers()
 
             companion object {
                 fun getDescriptorType(targetDescriptor: CallableDescriptor): ColorRGBaDescriptor? {
                     return when (targetDescriptor.getImportableDescriptor().name.asString()) {
                         "fromHex" -> FromHex
-                        "rgb" -> RGB
-                        "rgba" -> RGBA
-                        "hsv" -> HSV
-                        "hsva" -> HSVA
-                        "ColorRGBa" -> ColorRGBa
-                        "ColorHSVa" -> ColorHSVa
+                        "rgb", "rgba" -> RGB
+                        "hsv", "hsva" -> HSV
+                        "ColorRGBa" -> ColorRGBaConstructor
+                        "ColorHSVa" -> ColorHSVaConstructor
                         else -> null
                     }
                 }
 
                 val numberFormatter: NumberFormat = DecimalFormat.getNumberInstance().also {
+                    it.minimumFractionDigits = 1
                     it.maximumFractionDigits = 3
+                }
+
+                fun DoubleArray.formatNumbers() = Array<String>(size) {
+                    numberFormatter.format(this[it])
                 }
             }
         }
