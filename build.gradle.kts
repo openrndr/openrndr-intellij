@@ -1,6 +1,8 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     java
-    kotlin("jvm") version "1.6.20"
+    kotlin("jvm") version "1.7.0"
     id("org.jetbrains.intellij") version "1.6.0"
 }
 
@@ -9,12 +11,21 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    mavenLocal()
     maven(url = "https://maven.openrndr.org")
 }
 
 dependencies {
-//    implementation("org.openrndr:openrndr-color:0.4.0-rc.7")
-//    implementation("org.openrndr:openrndr-math:0.4.0-rc.7")
+    implementation("org.openrndr:openrndr-color:0.5.1-SNAPSHOT")
+    implementation("org.openrndr:openrndr-math:0.5.1-SNAPSHOT")
+    implementation("org.openrndr.extra:orx-color:0.5.1-SNAPSHOT")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.7.0")
+}
+
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(11))
+    }
 }
 
 // Configure Gradle IntelliJ Plugin
@@ -27,17 +38,24 @@ intellij {
 }
 
 tasks {
-    buildSearchableOptions {
-        enabled = false
-    }
-
     // Set the JVM compatibility versions
     withType<JavaCompile> {
         sourceCompatibility = "11"
         targetCompatibility = "11"
     }
-    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "11"
+    }
+
+    // https://youtrack.jetbrains.com/issue/IDEA-278926#focus=Comments-27-5561012.0-0
+    val test by getting(Test::class) {
+        isScanForTestClasses = false
+        // Only run tests from classes that end with "Test"
+        include("**/*Test.class")
+    }
+
+    buildSearchableOptions {
+        enabled = false
     }
 
     patchPluginXml {
