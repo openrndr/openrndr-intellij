@@ -52,36 +52,49 @@ class ColorRGBaColorProvider : ElementColorProvider {
         val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
         val command = Runnable {
             val resolvedCall = parent.resolveToCall() ?: return@Runnable
-            val descriptor = resolvedCall.resultingDescriptor
-            val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor) ?: return@Runnable
+            val targetDescriptor = resolvedCall.resultingDescriptor
+            val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(targetDescriptor) ?: return@Runnable
             val psiFactory = KtPsiFactory(element)
 
             // with credit to ConvertLambdaReferenceToIntention
             val outerCallExpression = parent.getStrictParentOfType<KtCallExpression>()
             val outerCallContext = outerCallExpression?.analyze() ?: return@Runnable
 
-            // TODO: This doesn't add extra arguments when needed,
-            // so if you have 3 args but now need to include alpha, too bad
             val valueArguments = outerCallExpression.valueArguments
 
             val call = outerCallExpression.getCall(outerCallContext) ?: return@Runnable
-            val argToParamMap = call.mapArgumentsToParameters(descriptor)
+            val argToParamMap = call.mapArgumentsToParameters(targetDescriptor)
             val colorArguments = colorRGBaDescriptor.argumentsFromColor(color)
+
+            // If we get back more color arguments than we have value arguments, then
+            // we won't attempt to hack them in alongside the existing named arguments,
+            // instead we simply go back to all plain positional arguments
+            val reuseNamedArguments = valueArguments.size == colorArguments.size
 
             val newArgumentList = psiFactory.buildValueArgumentList {
                 appendFixedText("(")
-                val sizeWithoutLast = valueArguments.size - 1
-                // These arguments are definitely in the right order
-                valueArguments.forEachIndexed { i, argument ->
-                    // I don't this could ever fail, but it's worth checking
-                    val parameter = argToParamMap[argument] ?: return@forEachIndexed
-                    if (argument.isNamed()) {
-                        appendName(parameter.name)
-                        appendFixedText(" = ")
+                if (reuseNamedArguments) {
+                    val sizeWithoutLast = valueArguments.size - 1
+                    // These arguments are definitely in the right order
+                    valueArguments.forEachIndexed { i, argument ->
+                        // I don't think this could ever fail, but it's worth checking
+                        val parameter = argToParamMap[argument] ?: return@forEachIndexed
+                        if (argument.isNamed()) {
+                            appendName(parameter.name)
+                            appendFixedText(" = ")
+                        }
+                        appendExpression(psiFactory.createExpression(colorArguments[parameter.index]))
+                        if (i < sizeWithoutLast) {
+                            appendFixedText(", ")
+                        }
                     }
-                    appendExpression(psiFactory.createExpression(colorArguments[parameter.index]))
-                    if (i < sizeWithoutLast) {
-                        appendFixedText(", ")
+                } else {
+                    val sizeWithoutLast = colorArguments.size - 1
+                    colorArguments.forEachIndexed { i, argument ->
+                        appendExpression(psiFactory.createExpression(argument))
+                        if (i < sizeWithoutLast) {
+                            appendFixedText(", ")
+                        }
                     }
                 }
                 appendFixedText(")")

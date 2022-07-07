@@ -96,8 +96,15 @@ internal enum class ColorRGBaDescriptor {
     };
 
     abstract val conversionFunction: (ColorRGBa) -> CastableToVector4
-    open fun argumentsFromColor(color: Color): Array<String> =
-        conversionFunction.invoke(color.toColorRGBa()).toVector4().toDoubleArray().formatNumbers()
+    open fun argumentsFromColor(color: Color): Array<String> {
+        val colorVector = conversionFunction.invoke(color.toColorRGBa()).toVector4()
+        // If alpha is fully opaque, we can skip it
+        return if (colorVector.w == 1.0) {
+            colorVector.xyz.toDoubleArray().formatNumbers()
+        } else {
+            colorVector.toDoubleArray().formatNumbers()
+        }
+    }
 
     abstract fun colorFromArguments(arguments: List<Any>): Color?
 
@@ -105,8 +112,8 @@ internal enum class ColorRGBaDescriptor {
         fun fromCallableDescriptor(targetDescriptor: CallableDescriptor): ColorRGBaDescriptor? {
             return when (targetDescriptor.getImportableDescriptor().name.asString()) {
                 "fromHex" -> FromHex
-                "rgb", "rgba" -> RGB
-                "hsv", "hsva" -> HSV
+                "rgb" -> RGB
+                "hsv" -> HSV
                 "ColorRGBa" -> ColorRGBaConstructor
                 "ColorHSVa" -> ColorHSVaConstructor
                 else -> null
