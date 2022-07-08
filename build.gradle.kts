@@ -19,7 +19,6 @@ dependencies {
     implementation("org.openrndr:openrndr-color:0.5.1-SNAPSHOT")
     implementation("org.openrndr:openrndr-math:0.5.1-SNAPSHOT")
     implementation("org.openrndr.extra:orx-color:0.5.1-SNAPSHOT")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.7.0")
 }
 
 kotlin {
