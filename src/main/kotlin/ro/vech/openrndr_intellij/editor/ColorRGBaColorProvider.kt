@@ -5,23 +5,28 @@ import com.intellij.openapi.editor.ElementColorProvider
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
+import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.descriptors.containingPackage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
-import org.jetbrains.kotlin.idea.core.mapArgumentsToParameters
+import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.callUtil.getCall
-import org.jetbrains.kotlin.resolve.constants.IntegerValueConstant
-import org.jetbrains.kotlin.resolve.constants.IntegerValueTypeConstant
+import org.jetbrains.kotlin.resolve.calls.callUtil.getParameterForArgument
+import org.jetbrains.kotlin.resolve.calls.callUtil.getType
+import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
+import org.jetbrains.kotlin.resolve.calls.model.ExpressionValueArgument
+import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
+import org.jetbrains.kotlin.resolve.constants.EnumValue
 import org.jetbrains.kotlin.resolve.constants.TypedCompileTimeConstant
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
-import org.jetbrains.kotlin.types.TypeUtils
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.ConvertibleToColorRGBa
+import org.openrndr.color.Linearity
 import java.awt.Color
 import kotlin.reflect.full.memberProperties
 
@@ -37,64 +42,61 @@ class ColorRGBaColorProvider : ElementColorProvider {
         if (packageName != "org.openrndr.color" && packageName != "org.openrndr.extras.color.presets") return null
 
         val bindingContext = parent.analyze()
-        val call = parent.getCall(bindingContext) ?: return null
-        val argToParamMap = call.mapArgumentsToParameters(descriptor)
-        val arguments = argToParamMap.getArgumentsInCanonicalOrder(bindingContext) ?: return null
+        val parametersToConstantsMap = resolvedCall.computeValueArguments(bindingContext) ?: return null
 
         val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor)
-        return colorRGBaDescriptor?.colorFromArguments(arguments)
-            ?: staticColorMap[descriptor.getImportableDescriptor().name.asString()]
+        return colorRGBaDescriptor?.colorFromArguments(parametersToConstantsMap)
+            ?: staticColorMap[descriptor.getImportableDescriptor().name.identifier]
     }
 
     override fun setColorTo(element: PsiElement, color: Color) {
         if (element !is LeafPsiElement) return
-        val parent = (element.context as? KtNameReferenceExpression) ?: return
         val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
         val command = Runnable {
+            val parent = (element.parent as? KtNameReferenceExpression) ?: return@Runnable
+            val bindingContext = parent.analyze()
             val resolvedCall = parent.resolveToCall() ?: return@Runnable
             val targetDescriptor = resolvedCall.resultingDescriptor
             val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(targetDescriptor) ?: return@Runnable
             val psiFactory = KtPsiFactory(element)
 
-            // with credit to ConvertLambdaReferenceToIntention
+            // TODO: There is some duplication going on here
             val outerCallExpression = parent.getStrictParentOfType<KtCallExpression>()
             val outerCallContext = outerCallExpression?.analyze() ?: return@Runnable
-
-            val valueArguments = outerCallExpression.valueArguments
-
             val call = outerCallExpression.getCall(outerCallContext) ?: return@Runnable
-            val argToParamMap = call.mapArgumentsToParameters(targetDescriptor)
             val colorArguments = colorRGBaDescriptor.argumentsFromColor(color)
 
-            // If we get back more color arguments than we have value arguments, then
-            // we won't attempt to hack them in alongside the existing named arguments,
-            // instead we simply go back to all plain positional arguments
-            val reuseNamedArguments = valueArguments.size == colorArguments.size
+            // This is probably the easiest way to check if we need to add alpha as an argument ourselves
+            val mustAddAlpha = call.valueArguments.count {
+                it.getArgumentExpression()?.getType(bindingContext)?.fqName?.asString() == "kotlin.Double"
+            } != 4
 
             val newArgumentList = psiFactory.buildValueArgumentList {
                 appendFixedText("(")
-                if (reuseNamedArguments) {
-                    val sizeWithoutLast = valueArguments.size - 1
-                    // These arguments are definitely in the right order
-                    valueArguments.forEachIndexed { i, argument ->
-                        // I don't think this could ever fail, but it's worth checking
-                        val parameter = argToParamMap[argument] ?: return@forEachIndexed
-                        if (argument.isNamed()) {
-                            appendName(parameter.name)
-                            appendFixedText(" = ")
-                        }
-                        appendExpression(psiFactory.createExpression(colorArguments[parameter.index]))
-                        if (i < sizeWithoutLast) {
-                            appendFixedText(", ")
-                        }
+                call.valueArguments.forEachIndexed { i, argument ->
+                    if (i > 0) {
+                        appendFixedText(", ")
                     }
-                } else {
-                    val sizeWithoutLast = colorArguments.size - 1
-                    colorArguments.forEachIndexed { i, argument ->
-                        appendExpression(psiFactory.createExpression(argument))
-                        if (i < sizeWithoutLast) {
-                            appendFixedText(", ")
-                        }
+                    val parameter = resolvedCall.getParameterForArgument(argument) ?: return@forEachIndexed
+                    if (argument.getArgumentName() != null) {
+                        appendName(parameter.name)
+                        appendFixedText(" = ")
+                    }
+                    // First 4 parameters of a color are always the color components
+                    if (parameter.index <= 3) {
+                        appendExpression(psiFactory.createExpression(colorArguments[parameter.index]))
+                    } else {
+                        appendExpression(argument.getArgumentExpression())
+                    }
+                }
+                if (mustAddAlpha) {
+                    val alphaParameter =
+                        resolvedCall.valueArguments.firstNotNullOfOrNull { if (it.key.isAlpha()) it.key else null }
+                    alphaParameter?.let {
+                        appendFixedText(", ")
+                        appendName(alphaParameter.name)
+                        appendFixedText(" = ")
+                        appendExpression(psiFactory.createExpression(colorArguments.last()))
                     }
                 }
                 appendFixedText(")")
@@ -106,17 +108,37 @@ class ColorRGBaColorProvider : ElementColorProvider {
     }
 
     internal companion object {
-        /** Resolves arguments to constants and returns them in canonical order. */
-        fun Map<ValueArgument, ValueParameterDescriptor>.getArgumentsInCanonicalOrder(bindingContext: BindingContext): List<Any>? {
-            return toList().sortedBy { it.second.index }.map {
-                val expression = it.first.getArgumentExpression() ?: return null
-                when (val constant = ConstantExpressionEvaluator.getConstant(expression, bindingContext)) {
-                    is IntegerValueTypeConstant -> (constant.toConstantValue(TypeUtils.DONT_CARE) as? IntegerValueConstant)?.value
-                    is TypedCompileTimeConstant -> constant.constantValue.value
-                    else -> null
-                } ?: return null
-            }
+        /** Convenient way to get [Linearity] out of a resolved call. */
+        fun ResolvedCall<out CallableDescriptor>.computeLinearity(bindingContext: BindingContext): Linearity? {
+            val expressionValueArgument = valueArguments.firstNotNullOfOrNull { (parameter, argument) ->
+                if (parameter.type.fqName?.asString() != "org.openrndr.color.Linearity") return@firstNotNullOfOrNull null
+                argument as? ExpressionValueArgument
+            } ?: return null
+            val argumentExpression = expressionValueArgument.valueArgument?.getArgumentExpression() ?: return null
+            val constant =
+                ConstantExpressionEvaluator.getConstant(argumentExpression, bindingContext) as? TypedCompileTimeConstant
+            val enum = constant?.constantValue as? EnumValue ?: return null
+            return Linearity.valueOf(enum.enumEntryName.identifier)
         }
+
+        /**
+         * Computes argument constants if it can, computes to null for
+         * missing arguments that have a default value in the parameter.
+         */
+        fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>? {
+            return valueArguments.map { (parameter, argument) ->
+                val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
+                if (!parameter.hasDefaultValue() && expression == null) return null
+                val constant = expression?.let { ConstantExpressionEvaluator.getConstant(it, bindingContext) }
+                parameter to constant as? TypedCompileTimeConstant
+            }.toMap()
+        }
+
+        /**
+         * There isn't really a consistent naming scheme in OPENRNDR colors
+         * but alpha is generally referred to by one of these two parameter names.
+         */
+        fun ValueParameterDescriptor.isAlpha() = name.identifier == "a" || name.identifier == "alpha"
 
         fun ConvertibleToColorRGBa.toAWTColor(): Color {
             val (r, g, b, a) = this as? ColorRGBa ?: toRGBa()
@@ -136,6 +158,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
             for (property in ColorRGBa.Companion::class.memberProperties) {
                 map[property.name] = (property.getter.call(ColorRGBa.Companion) as ColorRGBa).toAWTColor()
             }
+            // There's no easy way to get the ColorRGBa extension properties in orx, we have to use Java reflection
             val extensionColorsJavaClass = Class.forName("org.openrndr.extras.color.presets.ColorsKt")
             for (method in extensionColorsJavaClass.declaredMethods) {
                 // Every generated java method is prefixed with "get"
