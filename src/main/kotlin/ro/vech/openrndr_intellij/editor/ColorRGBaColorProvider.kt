@@ -12,14 +12,15 @@ import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
 import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.callUtil.getCall
 import org.jetbrains.kotlin.resolve.calls.callUtil.getParameterForArgument
-import org.jetbrains.kotlin.resolve.calls.callUtil.getType
 import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
 import org.jetbrains.kotlin.resolve.calls.model.ExpressionValueArgument
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
+import org.jetbrains.kotlin.resolve.constants.CompileTimeConstant
 import org.jetbrains.kotlin.resolve.constants.EnumValue
 import org.jetbrains.kotlin.resolve.constants.TypedCompileTimeConstant
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
@@ -53,23 +54,21 @@ class ColorRGBaColorProvider : ElementColorProvider {
         if (element !is LeafPsiElement) return
         val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
         val command = Runnable {
-            val parent = (element.parent as? KtNameReferenceExpression) ?: return@Runnable
-            val bindingContext = parent.analyze()
-            val resolvedCall = parent.resolveToCall() ?: return@Runnable
-            val targetDescriptor = resolvedCall.resultingDescriptor
-            val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(targetDescriptor) ?: return@Runnable
-            val psiFactory = KtPsiFactory(element)
-
-            // TODO: There is some duplication going on here
-            val outerCallExpression = parent.getStrictParentOfType<KtCallExpression>()
+            val outerCallExpression = element.getStrictParentOfType<KtCallExpression>()
             val outerCallContext = outerCallExpression?.analyze() ?: return@Runnable
             val call = outerCallExpression.getCall(outerCallContext) ?: return@Runnable
+
+            val resolvedCall = outerCallExpression.resolveToCall() ?: return@Runnable
+            val targetDescriptor = resolvedCall.resultingDescriptor
+            val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(targetDescriptor) ?: return@Runnable
+
             val colorArguments = colorRGBaDescriptor.argumentsFromColor(color)
 
-            // This is probably the easiest way to check if we need to add alpha as an argument ourselves
-            val mustAddAlpha = call.valueArguments.count {
-                it.getArgumentExpression()?.getType(bindingContext)?.fqName?.asString() == "kotlin.Double"
-            } != 4
+            val mustAddAlpha = call.valueArguments.none {
+                resolvedCall.getParameterForArgument(it)?.isAlpha() ?: false
+            }
+
+            val psiFactory = KtPsiFactory(element)
 
             val newArgumentList = psiFactory.buildValueArgumentList {
                 appendFixedText("(")
@@ -90,8 +89,9 @@ class ColorRGBaColorProvider : ElementColorProvider {
                     }
                 }
                 if (mustAddAlpha) {
-                    val alphaParameter =
-                        resolvedCall.valueArguments.firstNotNullOfOrNull { if (it.key.isAlpha()) it.key else null }
+                    val alphaParameter = resolvedCall.valueArguments.firstNotNullOfOrNull { (parameter, _) ->
+                        parameter.takeIf { it.isAlpha() }
+                    }
                     alphaParameter?.let {
                         appendFixedText(", ")
                         appendName(alphaParameter.name)
@@ -101,7 +101,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 }
                 appendFixedText(")")
             }
-            parent.nextSibling.replace(newArgumentList)
+            outerCallExpression.getChildOfType<KtValueArgumentList>()?.replace(newArgumentList)
         }
         // TODO: Should use message bundle for command name
         CommandProcessor.getInstance().executeCommand(element.project, command, "Change Color", null, document)
@@ -111,10 +111,9 @@ class ColorRGBaColorProvider : ElementColorProvider {
         /** Convenient way to get [Linearity] out of a resolved call. */
         fun ResolvedCall<out CallableDescriptor>.computeLinearity(bindingContext: BindingContext): Linearity? {
             val expressionValueArgument = valueArguments.firstNotNullOfOrNull { (parameter, argument) ->
-                if (parameter.type.fqName?.asString() != "org.openrndr.color.Linearity") return@firstNotNullOfOrNull null
-                argument as? ExpressionValueArgument
-            } ?: return null
-            val argumentExpression = expressionValueArgument.valueArgument?.getArgumentExpression() ?: return null
+                argument.takeIf { parameter.type.fqName?.asString() == "org.openrndr.color.Linearity" } as? ExpressionValueArgument
+            }
+            val argumentExpression = expressionValueArgument?.valueArgument?.getArgumentExpression() ?: return null
             val constant =
                 ConstantExpressionEvaluator.getConstant(argumentExpression, bindingContext) as? TypedCompileTimeConstant
             val enum = constant?.constantValue as? EnumValue ?: return null
@@ -125,12 +124,12 @@ class ColorRGBaColorProvider : ElementColorProvider {
          * Computes argument constants if it can, computes to null for
          * missing arguments that have a default value in the parameter.
          */
-        fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>? {
+        fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): Map<ValueParameterDescriptor, CompileTimeConstant<*>?>? {
             return valueArguments.map { (parameter, argument) ->
                 val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
                 if (!parameter.hasDefaultValue() && expression == null) return null
                 val constant = expression?.let { ConstantExpressionEvaluator.getConstant(it, bindingContext) }
-                parameter to constant as? TypedCompileTimeConstant
+                parameter to constant
             }.toMap()
         }
 

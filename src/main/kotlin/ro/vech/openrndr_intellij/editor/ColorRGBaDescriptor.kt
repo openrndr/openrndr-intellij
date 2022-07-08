@@ -5,6 +5,8 @@ import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.resolve.constants.CompileTimeConstant
+import org.jetbrains.kotlin.resolve.constants.IntegerValueTypeConstant
 import org.jetbrains.kotlin.resolve.constants.TypedCompileTimeConstant
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
@@ -23,21 +25,29 @@ internal enum class ColorRGBaDescriptor {
             return arrayOf("0x$hex")
         }
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>): Color? {
-            return when (val hex = parametersToConstantsMap.firstArgument?.value?.constantValue?.value) {
-                is Int -> ColorRGBa.fromHex(hex).toAWTColor()
-                is String -> ColorHexUtil.fromHexOrNull(hex)
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
+            val firstArgument = parametersToConstantsMap.firstArgument
+            return when (val firstValue = firstArgument?.value) {
+                is IntegerValueTypeConstant -> {
+                    val value = firstValue.toConstantValue(firstArgument.key.type).value as? Int ?: return null
+                    ColorRGBa.fromHex(value).toAWTColor()
+                }
+                is TypedCompileTimeConstant -> {
+                    val value = firstValue.constantValue.value as? String ?: return null
+                    ColorHexUtil.fromHexOrNull(value)
+                }
                 else -> null
             }
         }
     },
     RGB {
         override val conversionFunction = ColorRGBa::toRGBa
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>): Color? {
-            val firstValue = parametersToConstantsMap.firstArgument?.value
-            return when (firstValue?.type?.fqName) {
-                FqName("kotlin.Double") -> {
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
+            val firstValue = parametersToConstantsMap.firstArgument?.value as? TypedCompileTimeConstant
+            return when (firstValue?.type?.fqName?.asString()) {
+                "kotlin.Double" -> {
                     val doubles = parametersToConstantsMap.colorComponents
+                    // Doesn't properly handle default parameters
                     when (doubles.size) {
                         1 -> rgb(doubles[0])
                         2 -> rgb(doubles[0], doubles[1])
@@ -46,7 +56,7 @@ internal enum class ColorRGBaDescriptor {
                         else -> null
                     }?.toAWTColor()
                 }
-                FqName("kotlin.String") -> ColorHexUtil.fromHexOrNull(
+                "kotlin.String" -> ColorHexUtil.fromHexOrNull(
                     firstValue.constantValue.value as? String ?: return null
                 )
                 else -> null
@@ -55,7 +65,7 @@ internal enum class ColorRGBaDescriptor {
     },
     HSV {
         override val conversionFunction = ColorRGBa::toHSVa
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>): Color? {
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val doubles = parametersToConstantsMap.colorComponents
             return when (doubles.size) {
                 3 -> hsv(doubles[0], doubles[1], doubles[2])
@@ -66,7 +76,7 @@ internal enum class ColorRGBaDescriptor {
     },
     ColorRGBaConstructor {
         override val conversionFunction = ColorRGBa::toRGBa
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>): Color? {
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val doubles = parametersToConstantsMap.colorComponents
             return when (doubles.size) {
                 3 -> ColorRGBa(doubles[0], doubles[1], doubles[2])
@@ -77,7 +87,7 @@ internal enum class ColorRGBaDescriptor {
     },
     ColorHSVaConstructor {
         override val conversionFunction = ColorRGBa::toHSVa
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>): Color? {
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val doubles = parametersToConstantsMap.colorComponents
             return when (doubles.size) {
                 3 -> ColorHSVa(doubles[0], doubles[1], doubles[2])
@@ -93,7 +103,7 @@ internal enum class ColorRGBaDescriptor {
         return colorVector.toDoubleArray().formatNumbers()
     }
 
-    abstract fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>): Color?
+    abstract fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color?
 
     companion object {
         fun fromCallableDescriptor(targetDescriptor: CallableDescriptor): ColorRGBaDescriptor? {
@@ -125,11 +135,11 @@ internal enum class ColorRGBaDescriptor {
             numberFormatter.format(this[it])
         }
 
-        val Map<ValueParameterDescriptor, TypedCompileTimeConstant<*>?>.colorComponents: List<Double>
+        val Map<ValueParameterDescriptor, CompileTimeConstant<*>?>.colorComponents: List<Double>
             get() = toList()
                 // Sort to canonical order
                 .sortedBy { it.first.index }
                 .filter { it.first.type.fqName != FqName("org.openrndr.color.Linearity") }
-                .mapNotNull { it.second?.constantValue?.value as? Double }
+                .mapNotNull { (it.second as? TypedCompileTimeConstant)?.constantValue?.value as? Double }
     }
 }
