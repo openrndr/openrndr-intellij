@@ -28,13 +28,18 @@ internal enum class ColorRGBaDescriptor {
         override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val firstArgument = parametersToConstantsMap.firstArgument
             return when (val firstValue = firstArgument?.value) {
+                // An integer argument constant may either be an IntegerValueTypeConstant (because it's an integer literal)
+                // or a TypedCompileTimeConstant (because it's a reference to an integer value or something like that)
                 is IntegerValueTypeConstant -> {
                     val value = firstValue.toConstantValue(firstArgument.key.type).value as? Int ?: return null
                     ColorRGBa.fromHex(value).toAWTColor()
                 }
                 is TypedCompileTimeConstant -> {
-                    val value = firstValue.constantValue.value as? String ?: return null
-                    ColorHexUtil.fromHexOrNull(value)
+                    when (val value = firstValue.constantValue.value) {
+                        is Int -> ColorRGBa.fromHex(value).toAWTColor()
+                        is String -> ColorHexUtil.fromHexOrNull(value)
+                        else -> null
+                    }
                 }
                 else -> null
             }
@@ -151,7 +156,7 @@ internal enum class ColorRGBaDescriptor {
             get() = toList()
                 // Sort to canonical order
                 .sortedBy { it.first.index }
-                .filter { it.first.type.fqName != FqName("org.openrndr.color.Linearity") }
+                .filter { it.first.type.fqName?.asString() != "org.openrndr.color.Linearity" }
                 .mapNotNull { (it.second as? TypedCompileTimeConstant)?.constantValue?.value as? Double }
     }
 }
