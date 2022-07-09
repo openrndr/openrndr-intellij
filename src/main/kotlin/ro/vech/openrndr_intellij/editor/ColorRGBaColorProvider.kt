@@ -64,6 +64,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
 
             val colorArguments = colorRGBaDescriptor.argumentsFromColor(color)
 
+            // If we can't find an existing alpha parameter, we'll need to add it ourselves
             val mustAddAlpha = call.valueArguments.none {
                 resolvedCall.getParameterForArgument(it)?.isAlpha() ?: false
             }
@@ -136,8 +137,15 @@ class ColorRGBaColorProvider : ElementColorProvider {
         /**
          * There isn't really a consistent naming scheme in OPENRNDR colors
          * but alpha is generally referred to by one of these two parameter names.
+         * ColorLABa uses both parameter names, so we need a bespoke code path for it.
          */
-        fun ValueParameterDescriptor.isAlpha() = name.identifier == "a" || name.identifier == "alpha"
+        fun ValueParameterDescriptor.isAlpha(): Boolean {
+            return if (containingDeclaration.getImportableDescriptor().name.asString() == "org.openrndr.color.ColorLABa") {
+                name.identifier == "alpha"
+            } else {
+                name.identifier == "a" || name.identifier == "alpha"
+            }
+        }
 
         fun ConvertibleToColorRGBa.toAWTColor(): Color {
             val (r, g, b, a) = this as? ColorRGBa ?: toRGBa()

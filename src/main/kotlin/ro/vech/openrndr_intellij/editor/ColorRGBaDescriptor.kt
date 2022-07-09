@@ -47,7 +47,7 @@ internal enum class ColorRGBaDescriptor {
             return when (firstValue?.type?.fqName?.asString()) {
                 "kotlin.Double" -> {
                     val doubles = parametersToConstantsMap.colorComponents
-                    // Doesn't properly handle default parameters
+                    // TODO: Doesn't properly handle default parameters
                     when (doubles.size) {
                         1 -> rgb(doubles[0])
                         2 -> rgb(doubles[0], doubles[1])
@@ -85,6 +85,17 @@ internal enum class ColorRGBaDescriptor {
             }?.toAWTColor()
         }
     },
+    ColorHSLaConstructor {
+        override val conversionFunction = ColorRGBa::toHSLa
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
+            val doubles = parametersToConstantsMap.colorComponents
+            return when (doubles.size) {
+                3 -> ColorHSLa(doubles[0], doubles[1], doubles[2])
+                4 -> ColorHSLa(doubles[0], doubles[1], doubles[2], doubles[3])
+                else -> null
+            }?.toAWTColor()
+        }
+    },
     ColorHSVaConstructor {
         override val conversionFunction = ColorRGBa::toHSVa
         override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
@@ -112,6 +123,7 @@ internal enum class ColorRGBaDescriptor {
                 "rgb" -> RGB
                 "hsv" -> HSV
                 "ColorRGBa" -> ColorRGBaConstructor
+                "ColorHSLa" -> ColorHSLaConstructor
                 "ColorHSVa" -> ColorHSVaConstructor
                 else -> null
             }
