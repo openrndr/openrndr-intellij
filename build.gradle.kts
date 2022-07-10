@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     java
     kotlin("jvm") version "1.7.0"
@@ -12,7 +10,6 @@ version = "1.0-SNAPSHOT"
 repositories {
     mavenCentral()
     mavenLocal()
-    maven(url = "https://maven.openrndr.org")
 }
 
 dependencies {
@@ -37,13 +34,8 @@ intellij {
 }
 
 tasks {
-    // Set the JVM compatibility versions
-    withType<JavaCompile> {
-        sourceCompatibility = "11"
-        targetCompatibility = "11"
-    }
-    withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "11"
+    wrapper {
+        gradleVersion = "7.4.2"
     }
 
     // https://youtrack.jetbrains.com/issue/IDEA-278926#focus=Comments-27-5561012.0-0
