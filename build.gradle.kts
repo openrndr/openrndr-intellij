@@ -13,9 +13,9 @@ repositories {
 }
 
 dependencies {
-    implementation("org.openrndr:openrndr-color:0.4.0")
-    implementation("org.openrndr:openrndr-math:0.4.0")
-    implementation("org.openrndr.extra:orx-color:0.4.0-1")
+    implementation("org.openrndr:openrndr-color:0.5.1-SNAPSHOT")
+    implementation("org.openrndr:openrndr-math:0.5.1-SNAPSHOT")
+    implementation("org.openrndr.extra:orx-color:0.5.1-SNAPSHOT")
 }
 
 kotlin {
