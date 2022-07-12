@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.descriptors.containingPackage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
-import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
@@ -21,13 +20,10 @@ import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getCall
 import org.jetbrains.kotlin.resolve.calls.util.getParameterForArgument
 import org.jetbrains.kotlin.resolve.constants.CompileTimeConstant
-import org.jetbrains.kotlin.resolve.constants.EnumValue
-import org.jetbrains.kotlin.resolve.constants.TypedCompileTimeConstant
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
+import org.openrndr.color.ColorModel
 import org.openrndr.color.ColorRGBa
-import org.openrndr.color.ConvertibleToColorRGBa
-import org.openrndr.color.Linearity
 import java.awt.Color
 import kotlin.reflect.full.memberProperties
 
@@ -109,18 +105,6 @@ class ColorRGBaColorProvider : ElementColorProvider {
     }
 
     internal companion object {
-        /** Convenient way to get [Linearity] out of a resolved call. */
-        fun ResolvedCall<out CallableDescriptor>.computeLinearity(bindingContext: BindingContext): Linearity? {
-            val expressionValueArgument = valueArguments.firstNotNullOfOrNull { (parameter, argument) ->
-                argument.takeIf { parameter.type.fqName?.asString() == "org.openrndr.color.Linearity" } as? ExpressionValueArgument
-            }
-            val argumentExpression = expressionValueArgument?.valueArgument?.getArgumentExpression() ?: return null
-            val constant =
-                ConstantExpressionEvaluator.getConstant(argumentExpression, bindingContext) as? TypedCompileTimeConstant
-            val enum = constant?.constantValue as? EnumValue ?: return null
-            return Linearity.valueOf(enum.enumEntryName.identifier)
-        }
-
         /**
          * Computes argument constants if it can, computes to null for
          * missing arguments that have a default value in the parameter.
@@ -134,20 +118,9 @@ class ColorRGBaColorProvider : ElementColorProvider {
             }.toMap()
         }
 
-        /**
-         * There isn't really a consistent naming scheme in OPENRNDR colors
-         * but alpha is generally referred to by one of these two parameter names.
-         * ColorLABa uses both parameter names, so we need a bespoke code path for it.
-         */
-        fun ValueParameterDescriptor.isAlpha(): Boolean {
-            return if (containingDeclaration.getImportableDescriptor().name.asString() == "org.openrndr.color.ColorLABa") {
-                name.identifier == "alpha"
-            } else {
-                name.identifier == "a" || name.identifier == "alpha"
-            }
-        }
+        fun ValueParameterDescriptor.isAlpha(): Boolean = name.identifier == "alpha"
 
-        fun ConvertibleToColorRGBa.toAWTColor(): Color {
+        fun ColorModel<*>.toAWTColor(): Color {
             val (r, g, b, a) = this as? ColorRGBa ?: toRGBa()
             return Color(
                 (r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt(), (a * 255).toInt()
@@ -160,19 +133,22 @@ class ColorRGBaColorProvider : ElementColorProvider {
             )
         }
 
-        val staticColorMap: Map<String, Color> = let {
-            val map = mutableMapOf<String, Color>()
+        /**
+         * Uses a combination of Kotlin and Java reflection to create a String-to-Color mapping
+         * of all static colors in openrndr.
+         */
+        // TODO: This could be generated at compile time instead.
+        val staticColorMap: Map<String, Color> = buildMap {
             for (property in ColorRGBa.Companion::class.memberProperties) {
-                map[property.name] = (property.getter.call(ColorRGBa.Companion) as ColorRGBa).toAWTColor()
+                this[property.name] = (property.getter.call(ColorRGBa.Companion) as ColorRGBa).toAWTColor()
             }
             // There's no easy way to get the ColorRGBa extension properties in orx, we have to use Java reflection
             val extensionColorsJavaClass = Class.forName("org.openrndr.extras.color.presets.ColorsKt")
             for (method in extensionColorsJavaClass.declaredMethods) {
                 // Every generated java method is prefixed with "get"
-                map[method.name.drop(3)] =
+                this[method.name.drop(3)] =
                     (method.invoke(ColorRGBa::javaClass, ColorRGBa.Companion) as ColorRGBa).toAWTColor()
             }
-            map
         }
     }
 }

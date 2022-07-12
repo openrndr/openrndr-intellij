@@ -1,6 +1,5 @@
 package ro.vech.openrndr_intellij.editor
 
-import com.intellij.ui.ColorHexUtil
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
@@ -9,19 +8,26 @@ import org.jetbrains.kotlin.resolve.constants.IntegerValueTypeConstant
 import org.jetbrains.kotlin.resolve.constants.TypedCompileTimeConstant
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
-import org.openrndr.math.CastableToVector4
 import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
 import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toColorRGBa
 import java.awt.Color
 import java.text.DecimalFormat
 import java.text.NumberFormat
 
-internal enum class ColorRGBaDescriptor {
-    FromHex {
+internal sealed class ColorRGBaDescriptor {
+    object FromHex : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toRGBa
         override fun argumentsFromColor(color: Color): Array<String> {
-            val hex = (color.rgb and 0xffffff).toString(16)
-            return arrayOf("0x$hex")
+            val hex = color.rgb.let {
+                // If alpha is 0xff, we won't need it
+                if (it and -0x1000000 == -0x1000000) {
+                    (it and 0xffffff).toString(16)
+                } else {
+                    // We need to rotate it from AARRGGBB to RRGGBBAA
+                    it.rotateLeft(8).toUInt().toString(16)
+                }
+            }
+            return arrayOf("\"#$hex\"")
         }
 
         override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
@@ -36,22 +42,26 @@ internal enum class ColorRGBaDescriptor {
                 is TypedCompileTimeConstant -> {
                     when (val value = firstValue.constantValue.value) {
                         is Int -> ColorRGBa.fromHex(value).toAWTColor()
-                        is String -> ColorHexUtil.fromHexOrNull(value)
+                        is String -> try {
+                            ColorRGBa.fromHex(value).toAWTColor()
+                        } catch (_: Exception) {
+                            null
+                        }
                         else -> null
                     }
                 }
                 else -> null
             }
         }
-    },
-    RGB {
+    }
+
+    object RGB : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toRGBa
         override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val firstValue = parametersToConstantsMap.firstArgument?.value as? TypedCompileTimeConstant
             return when (firstValue?.type?.fqName?.asString()) {
                 "kotlin.Double" -> {
                     val doubles = parametersToConstantsMap.colorComponents
-                    // TODO: Doesn't properly handle default parameters
                     when (doubles.size) {
                         1 -> rgb(doubles[0])
                         2 -> rgb(doubles[0], doubles[1])
@@ -60,14 +70,17 @@ internal enum class ColorRGBaDescriptor {
                         else -> null
                     }?.toAWTColor()
                 }
-                "kotlin.String" -> ColorHexUtil.fromHexOrNull(
-                    firstValue.constantValue.value as? String ?: return null
-                )
+                "kotlin.String" -> try {
+                    ColorRGBa.fromHex(firstValue.constantValue.value as? String ?: return null).toAWTColor()
+                } catch (_: Exception) {
+                    null
+                }
                 else -> null
             }
         }
-    },
-    HSV {
+    }
+
+    object HSV : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toHSVa
         override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val doubles = parametersToConstantsMap.colorComponents
@@ -77,8 +90,9 @@ internal enum class ColorRGBaDescriptor {
                 else -> null
             }?.toAWTColor()
         }
-    },
-    ColorRGBaConstructor {
+    }
+
+    object ColorRGBaConstructor : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toRGBa
         override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val doubles = parametersToConstantsMap.colorComponents
@@ -88,8 +102,9 @@ internal enum class ColorRGBaDescriptor {
                 else -> null
             }?.toAWTColor()
         }
-    },
-    ColorHSLaConstructor {
+    }
+
+    object ColorHSLaConstructor : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toHSLa
         override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val doubles = parametersToConstantsMap.colorComponents
@@ -99,8 +114,9 @@ internal enum class ColorRGBaDescriptor {
                 else -> null
             }?.toAWTColor()
         }
-    },
-    ColorHSVaConstructor {
+    }
+
+    object ColorHSVaConstructor : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toHSVa
         override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
             val doubles = parametersToConstantsMap.colorComponents
@@ -110,9 +126,9 @@ internal enum class ColorRGBaDescriptor {
                 else -> null
             }?.toAWTColor()
         }
-    };
+    }
 
-    abstract val conversionFunction: (ColorRGBa) -> CastableToVector4
+    abstract val conversionFunction: (ColorRGBa) -> ColorModel<*>
     open fun argumentsFromColor(color: Color): Array<String> {
         val colorVector = conversionFunction(color.toColorRGBa()).toVector4()
         return colorVector.toDoubleArray().formatNumbers()
@@ -155,7 +171,6 @@ internal enum class ColorRGBaDescriptor {
             get() = toList()
                 // Sort to canonical order
                 .sortedBy { it.first.index }
-                .filter { it.first.type.fqName?.asString() != "org.openrndr.color.Linearity" }
                 .mapNotNull { (it.second as? TypedCompileTimeConstant)?.constantValue?.value as? Double }
     }
 }
