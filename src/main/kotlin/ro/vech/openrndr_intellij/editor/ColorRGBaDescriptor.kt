@@ -80,52 +80,41 @@ internal sealed class ColorRGBaDescriptor {
         }
     }
 
-    object HSV : ColorRGBaDescriptor() {
-        override val conversionFunction = ColorRGBa::toHSVa
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
-            val doubles = parametersToConstantsMap.colorComponents
-            return when (doubles.size) {
-                3 -> hsv(doubles[0], doubles[1], doubles[2])
-                4 -> hsv(doubles[0], doubles[1], doubles[2], doubles[3])
-                else -> null
-            }?.toAWTColor()
-        }
-    }
-
     object ColorRGBaConstructor : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toRGBa
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
-            val doubles = parametersToConstantsMap.colorComponents
-            return when (doubles.size) {
-                3 -> ColorRGBa(doubles[0], doubles[1], doubles[2])
-                4 -> ColorRGBa(doubles[0], doubles[1], doubles[2], doubles[3])
-                else -> null
-            }?.toAWTColor()
-        }
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? =
+            colorFromArguments4(parametersToConstantsMap, ::ColorRGBa)
     }
 
     object ColorHSLaConstructor : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toHSLa
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
-            val doubles = parametersToConstantsMap.colorComponents
-            return when (doubles.size) {
-                3 -> ColorHSLa(doubles[0], doubles[1], doubles[2])
-                4 -> ColorHSLa(doubles[0], doubles[1], doubles[2], doubles[3])
-                else -> null
-            }?.toAWTColor()
-        }
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? =
+            colorFromArguments4(parametersToConstantsMap, ::ColorHSLa)
     }
 
     object ColorHSVaConstructor : ColorRGBaDescriptor() {
         override val conversionFunction = ColorRGBa::toHSVa
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? {
-            val doubles = parametersToConstantsMap.colorComponents
-            return when (doubles.size) {
-                3 -> ColorHSVa(doubles[0], doubles[1], doubles[2])
-                4 -> ColorHSVa(doubles[0], doubles[1], doubles[2], doubles[3])
-                else -> null
-            }?.toAWTColor()
-        }
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? =
+            colorFromArguments4(parametersToConstantsMap, ::ColorHSVa)
+    }
+
+    object ColorLABaConstructor : ColorRGBaDescriptor() {
+        override val conversionFunction: (ColorRGBa) -> ColorModel<*> = { it.toLABa() }
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? =
+            // TODO: Account for reference white argument
+            colorFromArguments4(parametersToConstantsMap, ::ColorLABa)
+    }
+
+    object ColorXSLaConstructor : ColorRGBaDescriptor() {
+        override val conversionFunction = ColorRGBa::toXSLa
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? =
+            colorFromArguments4(parametersToConstantsMap, ::ColorXSLa)
+    }
+
+    object ColorXSVaConstructor : ColorRGBaDescriptor() {
+        override val conversionFunction = ColorRGBa::toXSLa
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? =
+            colorFromArguments4(parametersToConstantsMap, ::ColorXSVa)
     }
 
     abstract val conversionFunction: (ColorRGBa) -> ColorModel<*>
@@ -141,12 +130,26 @@ internal sealed class ColorRGBaDescriptor {
             return when (targetDescriptor.getImportableDescriptor().name.asString()) {
                 "fromHex" -> FromHex
                 "rgb" -> RGB
-                "hsv" -> HSV
                 "ColorRGBa" -> ColorRGBaConstructor
                 "ColorHSLa" -> ColorHSLaConstructor
-                "ColorHSVa" -> ColorHSVaConstructor
+                "hsv", "ColorHSVa" -> ColorHSVaConstructor
+                "ColorLABa" -> ColorLABaConstructor
+                "ColorXSLa" -> ColorXSLaConstructor
+                "ColorXSVa" -> ColorXSVaConstructor
                 else -> null
             }
+        }
+
+        fun colorFromArguments4(
+            parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>,
+            colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
+        ): Color? {
+            val doubles = parametersToConstantsMap.colorComponents
+            return when (doubles.size) {
+                3 -> colorConstructor(doubles[0], doubles[1], doubles[2], 1.0)
+                4 -> colorConstructor(doubles[0], doubles[1], doubles[2], doubles[3])
+                else -> null
+            }?.toAWTColor()
         }
 
         /** Returns parameter-argument pair with the positional index of 0. */
