@@ -118,7 +118,11 @@ class ColorRGBaColorProvider : ElementColorProvider {
             }.toMap()
         }
 
-        fun ValueParameterDescriptor.isAlpha(): Boolean = name.identifier == "alpha"
+        fun ValueParameterDescriptor.isAlpha(): Boolean {
+            return containingDeclaration.getImportableDescriptor().name.asString().let {
+                (it == "org.openrndr.color.rgb" || it == "org.openrndr.color.hsv") && name.identifier == "a" || name.identifier == "alpha"
+            }
+        }
 
         fun ColorModel<*>.toAWTColor(): Color {
             val (r, g, b, a) = this as? ColorRGBa ?: toRGBa()
