@@ -1,5 +1,6 @@
 plugins {
     java
+    id("java")
     kotlin("jvm") version "1.7.0"
     id("org.jetbrains.intellij") version "1.7.0"
 }
@@ -27,7 +28,7 @@ kotlin {
 // Configure Gradle IntelliJ Plugin
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
-    version.set("2021.3")
+    version.set("2022.1")
     type.set("IC") // Target IDE Platform
 
     plugins.set(listOf("org.jetbrains.kotlin"))
@@ -43,6 +44,7 @@ tasks {
         isScanForTestClasses = false
         // Only run tests from classes that end with "Test"
         include("**/*Test.class")
+        systemProperties("idea.home.path" to "E:\\Source\\intellij-community")
     }
 
     buildSearchableOptions {
