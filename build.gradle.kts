@@ -36,7 +36,7 @@ intellij {
 
 tasks {
     wrapper {
-        gradleVersion = "7.4.2"
+        gradleVersion = "7.5"
     }
 
     // https://youtrack.jetbrains.com/issue/IDEA-278926#focus=Comments-27-5561012.0-0
