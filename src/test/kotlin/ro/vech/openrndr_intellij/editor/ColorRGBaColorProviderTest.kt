@@ -5,35 +5,131 @@ import com.intellij.testFramework.LightProjectDescriptor
 import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
 import com.intellij.util.ui.ColorIcon
+import com.intellij.util.ui.ColorsIcon
+import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.idea.KotlinFileType
+import org.openrndr.color.*
+import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
 import java.awt.Color
 
 class ColorRGBaColorProviderTest : LightJavaCodeInsightFixtureTestCase() {
 
     override fun getProjectDescriptor(): LightProjectDescriptor = PROJECT_DESCRIPTOR
 
-    private fun assertGutterIconColor(expected: Color, colorRGBaColor: String) {
-        val code = standardColorRGBaExpressionTemplate(colorRGBaColor)
+    private fun assertGutterIconColor(
+        expected: Color,
+        @Language("kt", prefix = "import org.openrndr.color.*\nfun main() {", suffix = "}") colorRGBaColor: String
+    ) = assertGutterIconColorManual(expected, colorRGBaExpressionTemplate(colorRGBaColor))
+
+    private fun assertGutterIconColorManual(expected: Color, code: String) {
         myFixture.configureByText(KotlinFileType.INSTANCE, code)
         val gutterMarks = myFixture.findAllGutters()
         assertTrue(gutterMarks.size == 1)
-        val actualIcon = gutterMarks[0].icon as? ColorIcon
-        assertEquals(expected, actualIcon?.iconColor)
+        val actualColorIcon = gutterMarks[0].icon as? ColorIcon
+        assertEquals(expected, actualColorIcon?.iconColor)
     }
 
     fun testColorRGBaStatic() {
-        assertGutterIconColor(Color.RED, "ColorRGBa.RED")
-        assertGutterIconColor(Color.BLUE, "ColorRGBa.BLUE")
+        assertGutterIconColor(ColorRGBa.RED.toAWTColor(), "ColorRGBa.RED")
+        assertGutterIconColor(ColorRGBa.BLUE.toAWTColor(), "ColorRGBa.BLUE")
+        // TODO: Figure out how to resolve this reference in test
+        // assertGutterIconColor(Color.decode("#ff69b4"), "ColorRGBa.HOT_PINK")
+    }
+
+    fun testColorRGBaStaticColorsInline() {
+        val expectedColors = arrayOf(Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW)
+        val code = colorRGBaExpressionTemplate("ColorRGBa.RED; ColorRGBa.GREEN; ColorRGBa.BLUE; ColorRGBa.YELLOW")
+        myFixture.configureByText(KotlinFileType.INSTANCE, code)
+        val gutterMarks = myFixture.findAllGutters()
+        assertTrue(gutterMarks.size == 1)
+        val expectedColorsIcon = ColorsIcon(12, *expectedColors.reversedArray())
+        val actualColorsIcon = gutterMarks[0].icon as? ColorsIcon
+        assertEquals(expectedColorsIcon, actualColorsIcon)
+    }
+
+    fun testColorRGBaConstructor() {
+        assertGutterIconColor(ColorRGBa(1.0, 0.4, 0.2, 1.0).toAWTColor(), "ColorRGBa(1.0, 0.4, 0.2, 1.0)")
+    }
+
+    fun testColorRGBaFromHex() {
+        assertGutterIconColor(ColorRGBa.MAGENTA.toAWTColor(), "ColorRGBa.fromHex(\"#f0f\")")
+        assertGutterIconColor(ColorRGBa.MAGENTA.toAWTColor(), "ColorRGBa.fromHex(\"#ff00ff\")")
+        assertGutterIconColor(ColorRGBa.fromHex("#ff00ff7f").toAWTColor(), "ColorRGBa.fromHex(\"#ff00ff7f\")")
+        assertGutterIconColor(ColorRGBa.fromHex("#3037").toAWTColor(), "ColorRGBa.fromHex(\"#3037\")")
+        assertGutterIconColor(ColorRGBa.YELLOW.toAWTColor(), "ColorRGBa.fromHex(0xffff00)")
+    }
+
+    fun testColorRGBaShorthand() {
+        assertGutterIconColor(rgb(0.1, 0.9, 0.3, 1.0).toAWTColor(), "rgb(0.1, 0.9, 0.3)")
+        assertGutterIconColor(rgb(1.0, 1.0, 1.0, 0.1).toAWTColor(), "rgb(1.0, 0.1)")
+        assertGutterIconColor(rgb("#0ff").toAWTColor(), "rgb(\"#0ff\")")
+    }
+
+    fun testColorRGBaConstructorWithConst() {
+        @Language("kt")
+        val prelude = """
+            const val X = 0.3
+            val a = 0.1
+            val b = a + X
+        """.trimMargin()
+        assertGutterIconColorManual(
+            ColorRGBa(0.7, 0.3, 0.2, 1.0).toAWTColor(), colorRGBaExpressionTemplate(prelude, "ColorRGBa(0.7, X, 0.2)")
+        )
+        assertGutterIconColorManual(
+            ColorRGBa(0.3, 0.1, 0.2, 1.0).toAWTColor(), colorRGBaExpressionTemplate(prelude, "ColorRGBa(0.3, a, 0.2)")
+        )
+        assertGutterIconColorManual(
+            ColorRGBa(0.6, 0.4, 0.1, 1.0).toAWTColor(), colorRGBaExpressionTemplate(prelude, "ColorRGBa(0.6, b, a)")
+        )
+    }
+
+    fun testColorHSVaConstructor() {
+        assertGutterIconColor(ColorHSVa(300.0, 0.35, 0.9, 0.4).toAWTColor(), "ColorHSVa(300.0, 0.35, 0.9, 0.4)")
+    }
+
+    fun testColorHSVaShorthand() {
+        assertGutterIconColor(hsv(303.5, 0.07, 0.8).toAWTColor(), "hsv(303.5, 0.07, 0.8)")
+        assertGutterIconColor(hsv(89.3, 0.13, 0.9, 0.95).toAWTColor(), "hsv(89.3, 0.13, 0.9, 0.95)")
+    }
+
+    fun testColorRGBaNamedArguments() {
+        assertGutterIconColor(ColorRGBa(0.1, b = 0.8, g = 0.1).toAWTColor(), "ColorRGBa(0.1, b = 0.8, g = 0.1)")
+        assertGutterIconColor(ColorRGBa(0.3, g = 0.7, b = 0.1).toAWTColor(), "ColorRGBa(0.3, g = 0.7, b = 0.1)")
+    }
+
+    fun testColorRGBaFromHexRenamedImport() {
+        @Language("kt")
+        val prelude = """
+            import org.openrndr.color.ColorRGBa.Companion.fromHex as hex
+        """.trimMargin()
+        assertGutterIconColorManual(
+            ColorRGBa.fromHex("#ff007f").toAWTColor(), colorRGBaExpressionTemplate(prelude, "hex(\"#ff007f\")")
+        )
     }
 
     companion object {
-        val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(
+        private val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(
             { IdeaTestUtil.getMockJdk17() },
             listOf("org.openrndr:openrndr-color:0.4.0", "org.openrndr.extra:orx-color:0.4.0-1")
         )
 
-        fun standardColorRGBaExpressionTemplate(expression: String): String {
-            return "import org.openrndr.color.ColorRGBa\n\nfun main() { $expression }"
-        }
+        @Language("kt")
+        private fun colorRGBaExpressionTemplate(
+            @Language("kt", prefix = "fun main() {", suffix = "}") expression: String
+        ): String = colorRGBaExpressionTemplate("", expression)
+
+        @Language("kt")
+        private fun colorRGBaExpressionTemplate(
+            @Language("kt") prelude: String,
+            @Language("kt", prefix = "import org.openrndr.color.*\nfun main() {", suffix = "}") expression: String
+        ): String = """
+            import org.openrndr.color.*
+            import org.openrndr.extras.color.presets.*
+            $prelude
+            
+            fun main() { 
+                $expression
+            }
+            """.trimIndent()
     }
 }
