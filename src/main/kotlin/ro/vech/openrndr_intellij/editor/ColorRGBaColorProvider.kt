@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.ColorModel
 import org.openrndr.color.ColorRGBa
 import java.awt.Color
+import kotlin.math.roundToInt
 import kotlin.reflect.full.memberProperties
 
 class ColorRGBaColorProvider : ElementColorProvider {
@@ -127,7 +128,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
         fun ColorModel<*>.toAWTColor(): Color {
             val (r, g, b, a) = this as? ColorRGBa ?: toRGBa()
             return Color(
-                (r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt(), (a * 255).toInt()
+                (r * 255.0).roundToInt(), (g * 255.0).roundToInt(), (b * 255.0).roundToInt(), (a * 255.0).roundToInt()
             )
         }
 
