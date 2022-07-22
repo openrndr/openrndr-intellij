@@ -1,7 +1,6 @@
 plugins {
     java
-    id("java")
-    kotlin("jvm") version "1.7.0"
+    kotlin("jvm") version "1.7.10"
     id("org.jetbrains.intellij") version "1.7.0"
 }
 
@@ -28,7 +27,7 @@ kotlin {
 // Configure Gradle IntelliJ Plugin
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
-    version.set("2022.1")
+    version.set("222-EAP-SNAPSHOT")
     type.set("IC") // Target IDE Platform
 
     plugins.set(listOf("org.jetbrains.kotlin"))
@@ -52,7 +51,7 @@ tasks {
     }
 
     patchPluginXml {
-        sinceBuild.set("213")
+        sinceBuild.set("222")
         untilBuild.set("223.*")
     }
 

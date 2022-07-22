@@ -1,45 +1,39 @@
 package ro.vech.openrndr_intellij.editor
 
-import com.intellij.openapi.module.Module
-import com.intellij.openapi.roots.ContentEntry
-import com.intellij.openapi.roots.ModifiableRootModel
-import com.intellij.pom.java.LanguageLevel
+import com.intellij.testFramework.IdeaTestUtil
 import com.intellij.testFramework.LightProjectDescriptor
+import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
-import com.intellij.testFramework.fixtures.MavenDependencyUtil
-import org.intellij.lang.annotations.Language
+import com.intellij.util.ui.ColorIcon
 import org.jetbrains.kotlin.idea.KotlinFileType
 import java.awt.Color
 
 class ColorRGBaColorProviderTest : LightJavaCodeInsightFixtureTestCase() {
 
-    override fun getProjectDescriptor(): LightProjectDescriptor {
-        return PROJECT_DESCRIPTOR
-    }
+    override fun getProjectDescriptor(): LightProjectDescriptor = PROJECT_DESCRIPTOR
 
-    private fun assertGutterIconColor(expected: Color, @Language("Kotlin") code: String) {
+    private fun assertGutterIconColor(expected: Color, colorRGBaColor: String) {
+        val code = standardColorRGBaExpressionTemplate(colorRGBaColor)
         myFixture.configureByText(KotlinFileType.INSTANCE, code)
-        println(myFixture.doHighlighting().joinToString("\n"))
-        val actual = myFixture.findAllGutters()
-        assertTrue(actual.size > 1)
-//        val icon = actual[1].icon as? ColorIcon
-//        assertEquals(expected, icon?.iconColor)
+        val gutterMarks = myFixture.findAllGutters()
+        assertTrue(gutterMarks.size == 1)
+        val actualIcon = gutterMarks[0].icon as? ColorIcon
+        assertEquals(expected, actualIcon?.iconColor)
     }
 
-    fun testColorRGBaRed() {
-        assertGutterIconColor(Color.RED, "import org.openrndr.color.ColorRGBa\n\nfun main() {\n    ColorRGBa.RED\n}")
+    fun testColorRGBaStatic() {
+        assertGutterIconColor(Color.RED, "ColorRGBa.RED")
+        assertGutterIconColor(Color.BLUE, "ColorRGBa.BLUE")
     }
 
     companion object {
-//        val PROJECT_DESCRIPTOR: DefaultLightProjectDescriptor =
-//            (JAVA_LATEST as DefaultLightProjectDescriptor).withRepositoryLibrary("org.openrndr:openrndr-color:0.4.0")
-//        val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(Supplier { IdeaTestUtil.getMockJdk17() }, listOf("org.openrndr:openrndr-color:0.4.0"))
+        val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(
+            { IdeaTestUtil.getMockJdk17() },
+            listOf("org.openrndr:openrndr-color:0.4.0", "org.openrndr.extra:orx-color:0.4.0-1")
+        )
 
-        private val PROJECT_DESCRIPTOR = object : ProjectDescriptor(LanguageLevel.JDK_11) {
-            override fun configureModule(module: Module, model: ModifiableRootModel, contentEntry: ContentEntry) {
-                super.configureModule(module, model, contentEntry)
-                MavenDependencyUtil.addFromMaven(model, "org.openrndr:openrndr-color:0.4.0")
-            }
+        fun standardColorRGBaExpressionTemplate(expression: String): String {
+            return "import org.openrndr.color.ColorRGBa\n\nfun main() { $expression }"
         }
     }
 }
