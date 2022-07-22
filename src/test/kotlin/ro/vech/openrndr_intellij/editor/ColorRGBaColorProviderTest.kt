@@ -2,8 +2,8 @@ package ro.vech.openrndr_intellij.editor
 
 import com.intellij.testFramework.IdeaTestUtil
 import com.intellij.testFramework.LightProjectDescriptor
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor
-import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
 import com.intellij.util.ui.ColorIcon
 import com.intellij.util.ui.ColorsIcon
 import org.intellij.lang.annotations.Language
@@ -12,7 +12,7 @@ import org.openrndr.color.*
 import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
 import java.awt.Color
 
-class ColorRGBaColorProviderTest : LightJavaCodeInsightFixtureTestCase() {
+class ColorRGBaColorProviderTest : BasePlatformTestCase() {
 
     override fun getProjectDescriptor(): LightProjectDescriptor = PROJECT_DESCRIPTOR
 
