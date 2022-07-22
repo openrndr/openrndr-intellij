@@ -43,7 +43,8 @@ tasks {
         isScanForTestClasses = false
         // Only run tests from classes that end with "Test"
         include("**/*Test.class")
-        systemProperties("idea.home.path" to "E:\\Source\\intellij-community")
+        // TODO: Consider environment variable for this
+        systemProperties("idea.home.path" to File("$projectDir/../intellij-community").absolutePath)
     }
 
     buildSearchableOptions {
