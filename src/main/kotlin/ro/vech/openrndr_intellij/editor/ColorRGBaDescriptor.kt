@@ -117,6 +117,12 @@ internal sealed class ColorRGBaDescriptor {
             colorFromArguments4(parametersToConstantsMap, ::ColorXSVa)
     }
 
+    object ColorXYZaConstructor : ColorRGBaDescriptor() {
+        override val conversionFunction = ColorRGBa::toXYZa
+        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, CompileTimeConstant<*>?>): Color? =
+            colorFromArguments4(parametersToConstantsMap, ::ColorXYZa)
+    }
+
     abstract val conversionFunction: (ColorRGBa) -> ColorModel<*>
     open fun argumentsFromColor(color: Color): Array<String> {
         val colorVector = conversionFunction(color.toColorRGBa()).toVector4()
@@ -131,11 +137,12 @@ internal sealed class ColorRGBaDescriptor {
                 "fromHex" -> FromHex
                 "rgb" -> RGB
                 "ColorRGBa" -> ColorRGBaConstructor
-                "ColorHSLa" -> ColorHSLaConstructor
+                "hsl", "ColorHSLa" -> ColorHSLaConstructor
                 "hsv", "ColorHSVa" -> ColorHSVaConstructor
                 "ColorLABa" -> ColorLABaConstructor
                 "ColorXSLa" -> ColorXSLaConstructor
                 "ColorXSVa" -> ColorXSVaConstructor
+                "ColorXYZa" -> ColorXYZaConstructor
                 else -> null
             }
         }
@@ -153,7 +160,7 @@ internal sealed class ColorRGBaDescriptor {
         }
 
         /** Returns parameter-argument pair with the positional index of 0. */
-        val <T> Map<ValueParameterDescriptor, T>.firstArgument: Map.Entry<ValueParameterDescriptor, T>?
+        val <V> Map<ValueParameterDescriptor, V>.firstArgument: Map.Entry<ValueParameterDescriptor, V>?
             get() {
                 for (entry in this) {
                     if (entry.key.index == 0) return entry
@@ -161,9 +168,9 @@ internal sealed class ColorRGBaDescriptor {
                 return null
             }
 
-        private val numberFormatter: NumberFormat = DecimalFormat.getNumberInstance().also {
-            it.minimumFractionDigits = 1
-            it.maximumFractionDigits = 3
+        private val numberFormatter: NumberFormat = DecimalFormat.getNumberInstance().apply {
+            minimumFractionDigits = 1
+            maximumFractionDigits = 3
         }
 
         fun DoubleArray.formatNumbers() = Array<String>(size) {
