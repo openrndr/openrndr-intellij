@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
+import org.jetbrains.kotlin.resolve.calls.model.DefaultValueArgument
 import org.jetbrains.kotlin.resolve.calls.model.ExpressionValueArgument
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getCall
@@ -66,10 +67,12 @@ class ColorRGBaColorProvider : ElementColorProvider {
 
             val colorArguments = colorRGBaDescriptor.argumentsFromColor(color)
 
-            // If we can't find an existing alpha parameter, we'll need to add it ourselves
-            val mustAddAlpha = call.valueArguments.none {
-                resolvedCall.getParameterForArgument(it)?.isAlpha() ?: false
-            }
+            // If the resolved call's alpha parameter resolves to a DefaultValueArgument, it means it's not present
+            // at the call site, so we'll need to add the argument ourselves.
+            val alphaParameterWithoutArgument =
+                resolvedCall.valueArguments.firstNotNullOfOrNull { (parameter, argument) ->
+                    parameter.takeIf { it.isAlpha() && argument is DefaultValueArgument }
+                }
 
             val psiFactory = KtPsiFactory(element)
 
@@ -91,16 +94,11 @@ class ColorRGBaColorProvider : ElementColorProvider {
                         appendExpression(argument.getArgumentExpression())
                     }
                 }
-                if (mustAddAlpha) {
-                    val alphaParameter = resolvedCall.valueArguments.firstNotNullOfOrNull { (parameter, _) ->
-                        parameter.takeIf { it.isAlpha() }
-                    }
-                    alphaParameter?.let {
-                        appendFixedText(", ")
-                        appendName(alphaParameter.name)
-                        appendFixedText(" = ")
-                        appendExpression(psiFactory.createExpression(colorArguments.last()))
-                    }
+                if (alphaParameterWithoutArgument != null) {
+                    appendFixedText(", ")
+                    appendName(alphaParameterWithoutArgument.name)
+                    appendFixedText(" = ")
+                    appendExpression(psiFactory.createExpression(colorArguments.last()))
                 }
                 appendFixedText(")")
             }
@@ -112,21 +110,26 @@ class ColorRGBaColorProvider : ElementColorProvider {
 
     internal companion object {
         /**
-         * Computes argument constants if it can, computes to null for
-         * missing arguments that have a default value in the parameter.
+         * Computes argument constants if it can, returns null otherwise.
+         *
+         * @return Either a mapping of parameters to argument constants or null if any of the argument
+         * constants cannot be computed _unless_ that argument parameter has a default value in which
+         * case that constant will be null.
          */
         fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): Map<ValueParameterDescriptor, CompileTimeConstant<*>?>? {
-            return valueArguments.map { (parameter, argument) ->
-                val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
-                if (!parameter.hasDefaultValue() && expression == null) return null
-                val constant = expression?.let { ConstantExpressionEvaluator.getConstant(it, bindingContext) }
-                parameter to constant
-            }.toMap()
+            return buildMap {
+                for ((parameter, argument) in valueArguments) {
+                    val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
+                    if (!parameter.hasDefaultValue() && expression == null) return null
+                    val constant = expression?.let { ConstantExpressionEvaluator.getConstant(it, bindingContext) }
+                    set(parameter, constant)
+                }
+            }
         }
 
         fun ValueParameterDescriptor.isAlpha(): Boolean {
             return containingDeclaration.getImportableDescriptor().name.asString().let {
-                name.identifier == "alpha" || name.identifier == "a" && (it == "org.openrndr.color.rgb" || it == "org.openrndr.color.hsv")
+                name.identifier == "alpha" || name.identifier == "a" && (it == "org.openrndr.color.rgb" || it == "org.openrndr.color.hsl" || it == "org.openrndr.color.hsv")
             }
         }
 
@@ -151,12 +154,12 @@ class ColorRGBaColorProvider : ElementColorProvider {
          * Uses a combination of Kotlin and Java reflection to create a String-to-Color mapping
          * of all static colors in openrndr.
          */
-        // TODO: This could be generated at compile time instead.
         val staticColorMap: Map<String, Color> = buildMap {
+            // Standard ColorRGBa static colors
             for (property in ColorRGBa.Companion::class.memberProperties) {
                 this[property.name] = (property.getter.call(ColorRGBa.Companion) as ColorRGBa).toAWTColor()
             }
-            // ColorXYZa white points
+            // ColorXYZa static white points
             for (property in ColorXYZa.Companion::class.memberProperties) {
                 this[property.name] = (property.getter.call(ColorXYZa.Companion) as ColorXYZa).toAWTColor()
             }
