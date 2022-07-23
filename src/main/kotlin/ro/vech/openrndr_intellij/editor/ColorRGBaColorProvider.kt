@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluat
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.ColorModel
 import org.openrndr.color.ColorRGBa
+import org.openrndr.color.ColorXYZa
 import java.awt.Color
 import kotlin.math.roundToInt
 import kotlin.reflect.full.memberProperties
@@ -32,19 +33,23 @@ class ColorRGBaColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
         val parent = (element.parent as? KtNameReferenceExpression) ?: return null
-        if (parent.parent !is KtCallExpression && parent.parent !is KtDotQualifiedExpression) return null
+        val grandparent = parent.parent
+        if (grandparent !is KtCallExpression && grandparent !is KtDotQualifiedExpression) return null
 
         val resolvedCall = parent.resolveToCall() ?: return null
         val descriptor = resolvedCall.resultingDescriptor
         val packageName = descriptor.containingPackage()?.asString()
         if (packageName != "org.openrndr.color" && packageName != "org.openrndr.extras.color.presets") return null
 
+        if (grandparent is KtDotQualifiedExpression) {
+            return staticColorMap[descriptor.getImportableDescriptor().name.identifier]
+        }
+
         val bindingContext = parent.analyze()
         val parametersToConstantsMap = resolvedCall.computeValueArguments(bindingContext) ?: return null
 
         val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor)
         return colorRGBaDescriptor?.colorFromArguments(parametersToConstantsMap)
-            ?: staticColorMap[descriptor.getImportableDescriptor().name.identifier]
     }
 
     override fun setColorTo(element: PsiElement, color: Color) {
@@ -121,22 +126,26 @@ class ColorRGBaColorProvider : ElementColorProvider {
 
         fun ValueParameterDescriptor.isAlpha(): Boolean {
             return containingDeclaration.getImportableDescriptor().name.asString().let {
-                (it == "org.openrndr.color.rgb" || it == "org.openrndr.color.hsv") && name.identifier == "a" || name.identifier == "alpha"
+                name.identifier == "alpha" || name.identifier == "a" && (it == "org.openrndr.color.rgb" || it == "org.openrndr.color.hsv")
             }
         }
 
-        fun ColorModel<*>.toAWTColor(): Color {
-            val (r, g, b, a) = this as? ColorRGBa ?: toRGBa()
-            return Color(
-                (r * 255.0).roundToInt(), (g * 255.0).roundToInt(), (b * 255.0).roundToInt(), (a * 255.0).roundToInt()
+        fun ColorModel<*>.toAWTColor(): Color = (this as? ColorRGBa ?: toRGBa()).clamped().run {
+            Color(
+                (r * 255.0).roundToInt(),
+                (g * 255.0).roundToInt(),
+                (b * 255.0).roundToInt(),
+                (alpha * 255.0).roundToInt()
             )
         }
 
-        fun Color.toColorRGBa(): ColorRGBa {
-            return ColorRGBa(
-                red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0
-            )
+        private fun ColorRGBa.clamped(): ColorRGBa = (0.0..1.0).let {
+            copy(r.coerceIn(it), g.coerceIn(it), b.coerceIn(it), alpha.coerceIn(it))
         }
+
+        fun Color.toColorRGBa() = ColorRGBa(
+            red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0
+        )
 
         /**
          * Uses a combination of Kotlin and Java reflection to create a String-to-Color mapping
@@ -146,6 +155,10 @@ class ColorRGBaColorProvider : ElementColorProvider {
         val staticColorMap: Map<String, Color> = buildMap {
             for (property in ColorRGBa.Companion::class.memberProperties) {
                 this[property.name] = (property.getter.call(ColorRGBa.Companion) as ColorRGBa).toAWTColor()
+            }
+            // ColorXYZa white points
+            for (property in ColorXYZa.Companion::class.memberProperties) {
+                this[property.name] = (property.getter.call(ColorXYZa.Companion) as ColorXYZa).toAWTColor()
             }
             // There's no easy way to get the ColorRGBa extension properties in orx, we have to use Java reflection
             val extensionColorsJavaClass = Class.forName("org.openrndr.extras.color.presets.ColorsKt")
