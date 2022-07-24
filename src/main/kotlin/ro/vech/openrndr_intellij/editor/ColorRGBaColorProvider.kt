@@ -20,8 +20,8 @@ import org.jetbrains.kotlin.resolve.calls.model.ExpressionValueArgument
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getCall
 import org.jetbrains.kotlin.resolve.calls.util.getParameterForArgument
-import org.jetbrains.kotlin.resolve.constants.CompileTimeConstant
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
+import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.ColorModel
 import org.openrndr.color.ColorRGBa
@@ -113,27 +113,48 @@ class ColorRGBaColorProvider : ElementColorProvider {
          * Computes argument constants if it can, returns null otherwise.
          *
          * @return Either a mapping of parameters to argument constants or null if any of the argument
-         * constants cannot be computed _unless_ that argument parameter has a default value in which
-         * case that constant will be null.
+         * constants cannot be computed.
          */
-        fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): Map<ValueParameterDescriptor, CompileTimeConstant<*>?>? {
+        fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): Map<ValueParameterDescriptor, ConstantValueContainer<*>>? {
             return buildMap {
                 for ((parameter, argument) in valueArguments) {
                     val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
-                    if (!parameter.hasDefaultValue() && expression == null) return null
-                    val constant = expression?.let { ConstantExpressionEvaluator.getConstant(it, bindingContext) }
-                    set(parameter, constant)
+                    if (expression == null && parameter.hasDefaultValue()) {
+                        when {
+                            parameter.isAlpha() -> set(parameter, ConstantValueContainer.ALPHA)
+                            parameter.isRef() -> set(parameter, ConstantValueContainer.REF)
+                            parameter.isLinearity() -> set(parameter, ConstantValueContainer.LINEARITY)
+                        }
+                        continue
+                    }
+                    expression?.let {
+                        if (parameter.isRef()) {
+                            val refResolvedCall = expression.resolveToCall() ?: return null
+                            val refColor =
+                                staticWhitePointMap[refResolvedCall.resultingDescriptor.getImportableDescriptor().name.identifier]
+                                    ?: return null
+                            set(parameter, ConstantValueContainer.WhitePoint(refColor))
+                        } else {
+                            val constant = ConstantExpressionEvaluator.getConstant(it, bindingContext)
+                                ?.toConstantValue(parameter.type) ?: return null
+                            set(parameter, ConstantValueContainer.Constant(constant))
+                        }
+                    }
                 }
             }
         }
 
         fun ValueParameterDescriptor.isAlpha(): Boolean {
-            return containingDeclaration.getImportableDescriptor().name.asString().let {
+            return containingDeclaration.getImportableDescriptor().fqNameSafe.asString().let {
                 name.identifier == "alpha" || name.identifier == "a" && (it == "org.openrndr.color.rgb" || it == "org.openrndr.color.hsl" || it == "org.openrndr.color.hsv")
             }
         }
 
-        fun ColorModel<*>.toAWTColor(): Color = (this as? ColorRGBa ?: toRGBa()).clamped().run {
+        fun ValueParameterDescriptor.isRef(): Boolean = name.identifier == "ref"
+
+        fun ValueParameterDescriptor.isLinearity(): Boolean = name.identifier == "linearity"
+
+        fun ColorModel<*>.toAWTColor(): Color = toRGBa().clamped().run {
             Color(
                 (r * 255.0).roundToInt(),
                 (g * 255.0).roundToInt(),
@@ -169,6 +190,13 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 // Every generated java method is prefixed with "get"
                 this[method.name.drop(3)] =
                     (method.invoke(ColorRGBa::javaClass, ColorRGBa.Companion) as ColorRGBa).toAWTColor()
+            }
+        }
+
+        val staticWhitePointMap: Map<String, ColorXYZa> = buildMap {
+            // ColorXYZa static white points
+            for (property in ColorXYZa.Companion::class.memberProperties) {
+                this[property.name] = property.getter.call(ColorXYZa.Companion) as ColorXYZa
             }
         }
     }
