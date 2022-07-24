@@ -17,8 +17,7 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     override fun getProjectDescriptor(): LightProjectDescriptor = PROJECT_DESCRIPTOR
 
     private fun assertGutterIconColor(
-        expected: Color,
-        @Language("kt", prefix = "import org.openrndr.color.*\nfun main() {", suffix = "}") colorRGBaColor: String
+        expected: Color, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") colorRGBaColor: String
     ) = assertGutterIconColorManual(expected, colorRGBaExpressionTemplate(colorRGBaColor))
 
     private fun assertGutterIconColorManual(expected: Color, code: String) {
@@ -33,8 +32,7 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
      * @param expected Left-to-right, top-to-bottom order of [Color]s expected in the gutter for a single line
      */
     private fun assertGutterIconMultiColor(
-        expected: Array<Color>,
-        @Language("kt", prefix = "import org.openrndr.color.*\nfun main() {", suffix = "}") code: String
+        expected: Array<Color>, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") code: String
     ) = assertGutterIconMultiColorManual(expected, colorRGBaExpressionTemplate(code))
 
     /**
@@ -54,7 +52,7 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     fun testColorRGBaStatic() {
         assertGutterIconColor(ColorRGBa.RED.toAWTColor(), "ColorRGBa.RED")
         assertGutterIconColor(ColorRGBa.BLUE.toAWTColor(), "ColorRGBa.BLUE")
-        // TODO: Figure out how to resolve this reference in test
+        // TODO: This always fails resolvetoCall
         // assertGutterIconColor(Color.decode("#ff69b4"), "ColorRGBa.HOT_PINK")
     }
 
@@ -148,11 +146,22 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
         )
     }
 
+    fun testColorOKLABa() {
+        // TODO: This always fails resolveToCall
+        // assertGutterIconColor(ColorOKLABa(300.0, 0.35, 0.9, 0.4).toAWTColor(), "ColorOKLABa(300.0, 0.35, 0.9, 0.4)")
+    }
+
     companion object {
         private val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(
             { IdeaTestUtil.getMockJdk17() },
             listOf("org.openrndr:openrndr-color:0.4.0", "org.openrndr.extra:orx-color:0.4.0-1")
         )
+
+        private const val IMPORTS = """import org.openrndr.color.*
+import org.openrndr.extras.color.presets.*
+import org.openrndr.extra.color.spaces.*"""
+
+        private const val IMPORTS_PREFIX = "$IMPORTS\nfun main() {"
 
         @Language("kt")
         private fun colorRGBaExpressionTemplate(
@@ -161,11 +170,9 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
 
         @Language("kt")
         private fun colorRGBaExpressionTemplate(
-            @Language("kt") prelude: String,
-            @Language("kt", prefix = "import org.openrndr.color.*\nfun main() {", suffix = "}") expression: String
+            @Language("kt") prelude: String, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") expression: String
         ): String = """
-            import org.openrndr.color.*
-            import org.openrndr.extras.color.presets.*
+            $IMPORTS
             $prelude
             
             fun main() { 
