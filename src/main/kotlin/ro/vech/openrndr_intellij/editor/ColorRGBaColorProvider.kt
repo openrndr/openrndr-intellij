@@ -65,7 +65,12 @@ class ColorRGBaColorProvider : ElementColorProvider {
             val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(targetDescriptor) ?: return@Runnable
 
             val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
-            val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (parameter, _) -> parameter.isRef() } }
+            val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (param, _) -> param.isRef() } }
+
+            /**
+             * This will always be null for color models which don't implement [ReferenceWhitePoint]
+             * and always non-null for color models that do.
+             */
             val ref = (refArgumentPair?.value as? ConstantValueContainer.WhitePoint)?.value
 
             val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref)
