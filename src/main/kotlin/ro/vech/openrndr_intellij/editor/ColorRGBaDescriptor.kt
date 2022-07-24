@@ -17,8 +17,8 @@ import java.text.NumberFormat
 
 internal typealias ArgumentMap = Map<ValueParameterDescriptor, ConstantValueContainer<*>>
 
-internal sealed class ColorRGBaDescriptor {
-    object FromHex : ColorRGBaDescriptor() {
+internal enum class ColorRGBaDescriptor {
+    FromHex {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?): Array<String> {
             val hex = color.rgb.let {
                 // If alpha is 0xff, we won't need it
@@ -44,9 +44,8 @@ internal sealed class ColorRGBaDescriptor {
                 else -> null
             }
         }
-    }
-
-    object RGB : ColorRGBaDescriptor() {
+    },
+    RGB {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
             argumentsFromColorSimple(color, ColorRGBa::toRGBa)
 
@@ -71,147 +70,91 @@ internal sealed class ColorRGBaDescriptor {
                 else -> null
             }
         }
-    }
+    },
 
-    object ColorRGBaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toRGBa)
-
+    // @formatter:off
+    ColorRGBaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toRGBa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorRGBa)
-    }
-
-    object ColorHSLaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toHSLa)
-
+    },
+    ColorHSLaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLa)
-    }
-
-    object ColorHSVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toHSVa)
-
+    },
+    ColorHSVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSVa)
-    }
-
-    object ColorLABaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorRef(color) { it.toLABa(ref!!) }
-
+    },
+    ColorLABaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLABa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLABa)
-    }
-
-    object ColorLCHABaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorRef(color) { it.toLCHABa(ref!!) }
-
+    },
+    ColorLCHABaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLCHABa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLCHABa)
-    }
-
-    object ColorLCHUVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorRef(color) { it.toLCHUVa(ref!!) }
-
+    },
+    ColorLCHUVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLCHUVa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLCHUVa)
-    }
-
-    object ColorLSHABaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorRef(color) { it.toLCHABa(ref!!).toLSHABa() }
-
+    },
+    ColorLSHABaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLCHABa(ref!!).toLSHABa() }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLSHABa)
-    }
-
-    object ColorLSHUVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorRef(color) { it.toLCHUVa(ref!!).toLSHUVa() }
-
+    },
+    ColorLSHUVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLCHUVa(ref!!).toLSHUVa() }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLSHUVa)
-    }
-
-    object ColorLUVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorRef(color) { it.toLUVa(ref!!) }
-
+    },
+    ColorLUVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLUVa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLUVa)
-    }
-
-    object ColorXSLaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toXSLa)
-
+    },
+    ColorXSLaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSLa)
-    }
-
-    object ColorXSVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toXSVa)
-
+    },
+    ColorXSVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSVa)
-    }
-
-    object ColorXYZaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toXYZa)
-
+    },
+    ColorXYZaConstructor {
+        // TODO: Should I be concerned with linearity here?
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXYZa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXYZa)
-    }
-
-    object ColorYxyaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color) { it.toXYZa().toRGBa() }
-
+    },
+    ColorYxyaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toXYZa().toRGBa() }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorYxya)
-    }
-
-    object ColorHPLUVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toHPLUVa)
-
+    },
+    ColorHPLUVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHPLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHPLUVa)
-    }
-
-    object ColorHSLUVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toHSLUVa)
-
+    },
+    ColorHSLUVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHSLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLUVa)
-    }
-
-    object ColorOKHSLaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toOKHSLa)
-
+    },
+    ColorOKHSLaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toOKHSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKHSLa)
-    }
-
-    object ColorOKHSVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toOKHSVa)
-
+    },
+    ColorOKHSVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toOKHSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKHSVa)
-    }
-
-    object ColorOKLABaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toOKLABa)
-
+    },
+    ColorOKLABaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toOKLABa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKLABa)
-    }
-
-    object ColorOKLCHaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toOKLCHa)
-
+    },
+    ColorOKLCHaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toOKLCHa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKLCHa)
-    }
-
-    object ColorXSLUVaConstructor : ColorRGBaDescriptor() {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toXSLUVa)
-
+    },
+    ColorXSLUVaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXSLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSLUVa)
-    }
+    };
+    // @formatter:on
 
     /**
      * @param ref Only present for color models where the reference color is used in the constructor,
