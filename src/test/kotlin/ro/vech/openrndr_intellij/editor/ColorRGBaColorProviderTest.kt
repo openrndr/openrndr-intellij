@@ -29,6 +29,28 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
         assertEquals(expected, actualColorIcon?.iconColor)
     }
 
+    /**
+     * @param expected Left-to-right, top-to-bottom order of [Color]s expected in the gutter for a single line
+     */
+    private fun assertGutterIconMultiColor(
+        expected: Array<Color>,
+        @Language("kt", prefix = "import org.openrndr.color.*\nfun main() {", suffix = "}") code: String
+    ) = assertGutterIconMultiColorManual(expected, colorRGBaExpressionTemplate(code))
+
+    /**
+     * @param expected Left-to-right, top-to-bottom order of [Color]s expected in the gutter for a single line
+     */
+    private fun assertGutterIconMultiColorManual(
+        expected: Array<Color>, code: String
+    ) {
+        myFixture.configureByText(KotlinFileType.INSTANCE, code)
+        val gutterMarks = myFixture.findAllGutters()
+        assertTrue(gutterMarks.size == 1)
+        val expectedColorsIcon = ColorsIcon(12, *expected.reversedArray())
+        val actualColorsIcon = gutterMarks[0].icon as? ColorsIcon
+        assertEquals(expectedColorsIcon, actualColorsIcon)
+    }
+
     fun testColorRGBaStatic() {
         assertGutterIconColor(ColorRGBa.RED.toAWTColor(), "ColorRGBa.RED")
         assertGutterIconColor(ColorRGBa.BLUE.toAWTColor(), "ColorRGBa.BLUE")
@@ -39,15 +61,14 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     fun testColorRGBaStaticColorsInline() {
         val expectedColors = arrayOf(Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW)
         val code = colorRGBaExpressionTemplate("ColorRGBa.RED; ColorRGBa.GREEN; ColorRGBa.BLUE; ColorRGBa.YELLOW")
-        myFixture.configureByText(KotlinFileType.INSTANCE, code)
-        val gutterMarks = myFixture.findAllGutters()
-        assertTrue(gutterMarks.size == 1)
-        val expectedColorsIcon = ColorsIcon(12, *expectedColors.reversedArray())
-        val actualColorsIcon = gutterMarks[0].icon as? ColorsIcon
-        assertEquals(expectedColorsIcon, actualColorsIcon)
+        assertGutterIconMultiColorManual(expectedColors, code)
     }
 
     fun testColorRGBaConstructor() {
+        assertGutterIconColor(
+            ColorRGBa(1.0, 0.4, 0.2, 1.0, Linearity.LINEAR).toAWTColor(),
+            "ColorRGBa(1.0, 0.4, 0.2, 1.0, Linearity.LINEAR)"
+        )
         assertGutterIconColor(ColorRGBa(1.0, 0.4, 0.2, 1.0).toAWTColor(), "ColorRGBa(1.0, 0.4, 0.2, 1.0)")
     }
 
@@ -61,7 +82,8 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
 
     fun testColorRGBaShorthand() {
         assertGutterIconColor(rgb(0.1, 0.9, 0.3, 1.0).toAWTColor(), "rgb(0.1, 0.9, 0.3)")
-        assertGutterIconColor(rgb(1.0, 1.0, 1.0, 0.1).toAWTColor(), "rgb(1.0, 0.1)")
+        // Re-enable after 0.4.1
+        // assertGutterIconColor(rgb(1.0, 1.0, 1.0, 0.1).toAWTColor(), "rgb(1.0, 0.1)")
         assertGutterIconColor(rgb("#0ff").toAWTColor(), "rgb(\"#0ff\")")
     }
 
@@ -104,6 +126,25 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
         """.trimMargin()
         assertGutterIconColorManual(
             ColorRGBa.fromHex("#ff007f").toAWTColor(), colorRGBaExpressionTemplate(prelude, "hex(\"#ff007f\")")
+        )
+    }
+
+    fun testColorLABaWithRef() {
+        assertGutterIconMultiColor(
+            arrayOf(
+                ColorLABa(73.233, 20.105, 67.223, alpha = 0.812, ref = ColorXYZa.SO10_UL3000).toAWTColor(),
+                ColorXYZa.SO10_UL3000.toAWTColor()
+            ), "ColorLABa(73.233, 20.105, 67.223, alpha = 0.812, ref = ColorXYZa.SO10_UL3000)"
+        )
+        assertGutterIconMultiColor(
+            arrayOf(
+                ColorLABa(73.233, 20.105, 67.223, alpha = 0.812, ref = ColorXYZa.SO10_D50).toAWTColor(),
+                ColorXYZa.SO10_D50.toAWTColor()
+            ), "ColorLABa(73.233, 20.105, 67.223, alpha = 0.812, ref = ColorXYZa.SO10_D50)"
+        )
+        assertGutterIconColor(
+            ColorLABa(73.233, 20.105, 67.223, alpha = 0.812).toAWTColor(),
+            "ColorLABa(73.233, 20.105, 67.223, alpha = 0.812)"
         )
     }
 
