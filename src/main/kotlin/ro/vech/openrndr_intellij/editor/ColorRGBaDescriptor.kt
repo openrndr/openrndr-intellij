@@ -8,11 +8,14 @@ import org.jetbrains.kotlin.resolve.constants.IntValue
 import org.jetbrains.kotlin.resolve.constants.StringValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
+import org.openrndr.extra.color.spaces.*
 import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
 import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toColorRGBa
 import java.awt.Color
 import java.text.DecimalFormat
 import java.text.NumberFormat
+
+internal typealias ArgumentMap = Map<ValueParameterDescriptor, ConstantValueContainer<*>>
 
 internal sealed class ColorRGBaDescriptor {
     object FromHex : ColorRGBaDescriptor() {
@@ -29,9 +32,9 @@ internal sealed class ColorRGBaDescriptor {
             return arrayOf("\"#$hex\"")
         }
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? {
+        override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
             return when (val firstValue =
-                (parametersToConstantsMap.firstOrNull()?.value as? ConstantValueContainer.Constant)?.value) {
+                (argumentMap.firstOrNull()?.value as? ConstantValueContainer.Constant)?.value) {
                 is IntValue -> ColorRGBa.fromHex(firstValue.value).toAWTColor()
                 is StringValue -> try {
                     ColorRGBa.fromHex(firstValue.value).toAWTColor()
@@ -46,11 +49,11 @@ internal sealed class ColorRGBaDescriptor {
     object RGB : ColorRGBaDescriptor() {
         override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toRGBa)
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? {
-            val firstArgument = parametersToConstantsMap.firstArgument
+        override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
+            val firstArgument = argumentMap.firstArgument
             return when (val firstValue = (firstArgument?.value as? ConstantValueContainer.Constant)?.value) {
                 is DoubleValue -> {
-                    val doubles = parametersToConstantsMap.colorComponents
+                    val doubles = argumentMap.colorComponents
                     when (doubles.size) {
                         1 -> rgb(doubles[0])
                         2 -> rgb(doubles[0], doubles[1])
@@ -72,55 +75,120 @@ internal sealed class ColorRGBaDescriptor {
     object ColorRGBaConstructor : ColorRGBaDescriptor() {
         override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toRGBa)
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? =
-            colorFromArgumentsSimple(parametersToConstantsMap, ::ColorRGBa)
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorRGBa)
     }
 
     object ColorHSLaConstructor : ColorRGBaDescriptor() {
         override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toHSLa)
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? =
-            colorFromArgumentsSimple(parametersToConstantsMap, ::ColorHSLa)
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLa)
     }
 
     object ColorHSVaConstructor : ColorRGBaDescriptor() {
         override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toHSVa)
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? =
-            colorFromArgumentsSimple(parametersToConstantsMap, ::ColorHSVa)
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSVa)
     }
 
     object ColorLABaConstructor : ColorRGBaDescriptor() {
         override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toLABa)
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? =
-            colorFromArgumentsWithRef(parametersToConstantsMap, ::ColorLABa)
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLABa)
+    }
+
+    object ColorLCHABaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toLCHABa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLCHABa)
+    }
+
+    object ColorLCHUVaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toLCHUVa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLCHUVa)
+    }
+
+    object ColorLSHABaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color) { it.toLCHABa().toLSHABa() }
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLSHABa)
+    }
+
+    object ColorLSHUVaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color) { it.toLCHUVa().toLSHUVa() }
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLSHUVa)
     }
 
     object ColorXSLaConstructor : ColorRGBaDescriptor() {
         override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toXSLa)
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? =
-            colorFromArgumentsSimple(parametersToConstantsMap, ::ColorXSLa)
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSLa)
     }
 
     object ColorXSVaConstructor : ColorRGBaDescriptor() {
         override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toXSVa)
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? =
-            colorFromArgumentsSimple(parametersToConstantsMap, ::ColorXSVa)
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSVa)
     }
 
     object ColorXYZaConstructor : ColorRGBaDescriptor() {
         override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toXYZa)
 
-        override fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color? =
-            colorFromArgumentsSimple(parametersToConstantsMap, ::ColorXYZa)
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXYZa)
+    }
+
+    object ColorYxyaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color) { it.toXYZa().toRGBa() }
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorYxya)
+    }
+
+    object ColorHPLUVaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toHPLUVa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHPLUVa)
+    }
+
+    object ColorHSLUVaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toHSLUVa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLUVa)
+    }
+
+    object ColorOKHSLaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toOKHSLa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKHSLa)
+    }
+
+    object ColorOKHSVaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toOKHSVa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKHSVa)
+    }
+
+    object ColorOKLABaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toOKLABa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKLABa)
+    }
+
+    object ColorOKLCHaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toOKLCHa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKLCHa)
+    }
+
+    object ColorXSLUVaConstructor : ColorRGBaDescriptor() {
+        override fun argumentsFromColor(color: Color) = argumentsFromColorSimple(color, ColorRGBa::toXSLUVa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSLUVa)
     }
 
     abstract fun argumentsFromColor(color: Color): Array<String>
 
-    abstract fun colorFromArguments(parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>): Color?
+    abstract fun colorFromArguments(argumentMap: ArgumentMap): Color?
 
     companion object {
         fun fromCallableDescriptor(targetDescriptor: CallableDescriptor): ColorRGBaDescriptor? {
@@ -131,9 +199,23 @@ internal sealed class ColorRGBaDescriptor {
                 "hsl", "ColorHSLa" -> ColorHSLaConstructor
                 "hsv", "ColorHSVa" -> ColorHSVaConstructor
                 "ColorLABa" -> ColorLABaConstructor
+                "ColorLCHABa" -> ColorLCHABaConstructor
+                "ColorLCHUVa" -> ColorLCHUVaConstructor
+                "ColorLSHABa" -> ColorLSHABaConstructor
+                "ColorLSHUVa" -> ColorLSHUVaConstructor
+                "ColorLUVa" -> ColorLABaConstructor
                 "ColorXSLa" -> ColorXSLaConstructor
                 "ColorXSVa" -> ColorXSVaConstructor
                 "ColorXYZa" -> ColorXYZaConstructor
+                "ColorYxya" -> ColorYxyaConstructor
+                // ORX color models
+                "ColorHPLUVa" -> ColorHPLUVaConstructor
+                "ColorHSLUVa" -> ColorHSLUVaConstructor
+                "ColorOKHSLa" -> ColorOKHSLaConstructor
+                "ColorOKHSVa" -> ColorOKHSVaConstructor
+                "ColorOKLABa" -> ColorOKLABaConstructor
+                "ColorOKLCHa" -> ColorOKLCHaConstructor
+                "ColorXSLUVa" -> ColorXSLUVaConstructor
                 else -> null
             }
         }
@@ -144,8 +226,7 @@ internal sealed class ColorRGBaDescriptor {
         }
 
         fun colorFromArgumentsSimple(
-            parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>,
-            colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
+            parametersToConstantsMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
         ): Color? {
             val doubles = parametersToConstantsMap.colorComponents
             return when (doubles.size) {
@@ -155,9 +236,8 @@ internal sealed class ColorRGBaDescriptor {
             }?.toAWTColor()
         }
 
-        fun <T> colorFromArgumentsWithRef(
-            parametersToConstantsMap: Map<ValueParameterDescriptor, ConstantValueContainer<*>>,
-            colorConstructor: (Double, Double, Double, Double, ColorXYZa) -> T
+        fun <T> colorFromArgumentRef(
+            parametersToConstantsMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double, ColorXYZa) -> T
         ): Color? where T : ColorModel<T>, T : ReferenceWhitePoint {
             val components = parametersToConstantsMap.toList().sortedBy { it.first.index }
             return when (components.size) {
@@ -209,7 +289,7 @@ internal sealed class ColorRGBaDescriptor {
         /**
          * @return all constant [Double]s in the map in canonical order.
          */
-        val Map<ValueParameterDescriptor, ConstantValueContainer<*>>.colorComponents: List<Double>
+        val ArgumentMap.colorComponents: List<Double>
             get() = toList().sortedBy { it.first.index }.mapNotNull {
                 ((it.second as? ConstantValueContainer.Constant)?.value as? DoubleValue)?.value
             }

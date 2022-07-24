@@ -37,20 +37,21 @@ class ColorRGBaColorProvider : ElementColorProvider {
         val grandparent = parent.parent
         if (grandparent !is KtCallExpression && grandparent !is KtDotQualifiedExpression) return null
 
+        // TODO: orx-color references always fail resolveToCall?
         val resolvedCall = parent.resolveToCall() ?: return null
         val descriptor = resolvedCall.resultingDescriptor
-        val packageName = descriptor.containingPackage()?.asString()
-        if (packageName != "org.openrndr.color" && packageName != "org.openrndr.extras.color.presets") return null
+
+        if (!descriptor.isColorModelPackage()) return null
 
         if (grandparent is KtDotQualifiedExpression) {
             return staticColorMap[descriptor.getImportableDescriptor().name.identifier]
         }
 
         val bindingContext = parent.analyze()
-        val parametersToConstantsMap = resolvedCall.computeValueArguments(bindingContext) ?: return null
+        val argumentMap = resolvedCall.computeValueArguments(bindingContext) ?: return null
 
         val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor)
-        return colorRGBaDescriptor?.colorFromArguments(parametersToConstantsMap)
+        return colorRGBaDescriptor?.colorFromArguments(argumentMap)
     }
 
     override fun setColorTo(element: PsiElement, color: Color) {
@@ -115,7 +116,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
          * @return Either a mapping of parameters to argument constants or null if any of the argument
          * constants cannot be computed.
          */
-        fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): Map<ValueParameterDescriptor, ConstantValueContainer<*>>? {
+        fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): ArgumentMap? {
             return buildMap {
                 for ((parameter, argument) in valueArguments) {
                     val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
@@ -143,6 +144,10 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 }
             }
         }
+
+        fun CallableDescriptor.isColorModelPackage() = containingPackage()?.asString()?.let {
+            it == "org.openrndr.color" || it == "org.openrndr.extras.color.presets" || it == "org.openrndr.extra.color.spaces"
+        } ?: false
 
         fun ValueParameterDescriptor.isAlpha(): Boolean {
             return containingDeclaration.getImportableDescriptor().fqNameSafe.asString().let {
