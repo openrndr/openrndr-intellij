@@ -23,9 +23,7 @@ import org.jetbrains.kotlin.resolve.calls.util.getParameterForArgument
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
-import org.openrndr.color.ColorModel
-import org.openrndr.color.ColorRGBa
-import org.openrndr.color.ColorXYZa
+import org.openrndr.color.*
 import java.awt.Color
 import kotlin.math.roundToInt
 import kotlin.reflect.full.memberProperties
@@ -66,7 +64,11 @@ class ColorRGBaColorProvider : ElementColorProvider {
             val targetDescriptor = resolvedCall.resultingDescriptor
             val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(targetDescriptor) ?: return@Runnable
 
-            val colorArguments = colorRGBaDescriptor.argumentsFromColor(color)
+            val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
+            val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (parameter, _) -> parameter.isRef() } }
+            val ref = (refArgumentPair?.value as? ConstantValueContainer.WhitePoint)?.value
+
+            val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref)
 
             // If the resolved call's alpha parameter resolves to a DefaultValueArgument, it means it's not present
             // at the call site, so we'll need to add the argument ourselves.
@@ -172,8 +174,8 @@ class ColorRGBaColorProvider : ElementColorProvider {
             copy(r.coerceIn(it), g.coerceIn(it), b.coerceIn(it), alpha.coerceIn(it))
         }
 
-        fun Color.toColorRGBa() = ColorRGBa(
-            red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0
+        fun Color.toColorRGBa(linearity: Linearity = Linearity.UNKNOWN) = ColorRGBa(
+            red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0, linearity
         )
 
         /**
