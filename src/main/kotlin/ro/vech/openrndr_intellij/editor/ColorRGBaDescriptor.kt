@@ -3,9 +3,7 @@ package ro.vech.openrndr_intellij.editor
 import com.jetbrains.rd.util.firstOrNull
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
-import org.jetbrains.kotlin.resolve.constants.DoubleValue
-import org.jetbrains.kotlin.resolve.constants.IntValue
-import org.jetbrains.kotlin.resolve.constants.StringValue
+import org.jetbrains.kotlin.resolve.constants.*
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
@@ -50,10 +48,13 @@ internal enum class ColorRGBaDescriptor {
             argumentsFromColorSimple(color, ColorRGBa::toRGBa)
 
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
-            val firstArgument = argumentMap.firstArgument
-            return when (val firstValue = (firstArgument?.value as? ConstantValueContainer.Constant)?.value) {
+            // The argument types for either call are homogenous so it doesn't matter which argument the map
+            // returns for us as we're only interested in knowing the type
+            val anyArgument = argumentMap.firstOrNull()
+            return when (val firstValue = (anyArgument?.value as? ConstantValueContainer.Constant)?.value) {
                 is DoubleValue -> {
                     val doubles = argumentMap.colorComponents
+                    // TODO: Isn't alpha always included?
                     when (doubles.size) {
                         1 -> rgb(doubles[0])
                         2 -> rgb(doubles[0], doubles[1])
@@ -71,12 +72,27 @@ internal enum class ColorRGBaDescriptor {
             }
         }
     },
+    ColorRGBaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
+            argumentsFromColorSimple(color, ColorRGBa::toRGBa)
+
+        override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
+            val components = argumentMap.toList().sortedBy { it.first.index }
+            if (components.size != 5) return null
+            val doubles = mutableListOf<Double>()
+            var linearity: Linearity = Linearity.UNKNOWN
+            for ((_, constant) in components) {
+                if (constant !is ConstantValueContainer.Constant) return null
+                when (val value = constant.value) {
+                    is DoubleValue -> doubles.add(value.value)
+                    is EnumValue -> linearity = Linearity.valueOf(value.enumEntryName.identifier)
+                }
+            }
+            return ColorRGBa(doubles[0], doubles[1], doubles[2], doubles[3], linearity).toAWTColor()
+        }
+    },
 
     // @formatter:off
-    ColorRGBaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toRGBa)
-        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorRGBa)
-    },
     ColorHSLaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLa)
@@ -86,28 +102,28 @@ internal enum class ColorRGBaDescriptor {
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSVa)
     },
     ColorLABaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLABa(ref!!) }
-        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLABa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLABa(ref!!) }
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLABa)
     },
     ColorLCHABaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLCHABa(ref!!) }
-        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLCHABa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLCHABa(ref!!) }
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLCHABa)
     },
     ColorLCHUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLCHUVa(ref!!) }
-        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLCHUVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLCHUVa(ref!!) }
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLCHUVa)
     },
     ColorLSHABaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLCHABa(ref!!).toLSHABa() }
-        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLSHABa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLCHABa(ref!!).toLSHABa() }
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLSHABa)
     },
     ColorLSHUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLCHUVa(ref!!).toLSHUVa() }
-        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLSHUVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLCHUVa(ref!!).toLSHUVa() }
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLSHUVa)
     },
     ColorLUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorRef(color) { it.toLUVa(ref!!) }
-        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentRef(argumentMap, ::ColorLUVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLUVa(ref!!) }
+        override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLUVa)
     },
     ColorXSLaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXSLa)
@@ -118,7 +134,6 @@ internal enum class ColorRGBaDescriptor {
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSVa)
     },
     ColorXYZaConstructor {
-        // TODO: Should I be concerned with linearity here?
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXYZa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXYZa)
     },
@@ -199,18 +214,10 @@ internal enum class ColorRGBaDescriptor {
             return colorVector.toDoubleArray().formatNumbers()
         }
 
-        fun <T> argumentsFromColorRef(
-            color: Color, conversionFunction: (ColorRGBa) -> T
-        ): Array<String> where T : ColorModel<T>, T : ReferenceWhitePoint {
-            // We need a linear ColorRGBa this time because all the ReferenceWhitePoint color models use it
-            val colorVector = conversionFunction(color.toColorRGBa(Linearity.LINEAR)).toVector4()
-            return colorVector.toDoubleArray().formatNumbers()
-        }
-
         fun colorFromArgumentsSimple(
-            parametersToConstantsMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
+            argumentMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
         ): Color? {
-            val doubles = parametersToConstantsMap.colorComponents
+            val doubles = argumentMap.colorComponents
             return when (doubles.size) {
                 3 -> colorConstructor(doubles[0], doubles[1], doubles[2], 1.0)
                 4 -> colorConstructor(doubles[0], doubles[1], doubles[2], doubles[3])
@@ -218,12 +225,13 @@ internal enum class ColorRGBaDescriptor {
             }?.toAWTColor()
         }
 
-        fun <T> colorFromArgumentRef(
-            parametersToConstantsMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double, ColorXYZa) -> T
+        fun <T> colorFromArgumentsRef(
+            argumentMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double, ColorXYZa) -> T
         ): Color? where T : ColorModel<T>, T : ReferenceWhitePoint {
-            val components = parametersToConstantsMap.toList().sortedBy { it.first.index }
+            val components = argumentMap.toList().sortedBy { it.first.index }
             return when (components.size) {
                 3 -> {
+                    // TODO: Is this ever reached?
                     val doubles = components.map {
                         ((it.second as? ConstantValueContainer.Constant)?.value as? DoubleValue ?: return null).value
                     }.takeIf { it.size == 3 } ?: return null
@@ -249,15 +257,6 @@ internal enum class ColorRGBaDescriptor {
                 else -> null
             }?.toAWTColor()
         }
-
-        /** Returns parameter-argument pair with the positional index of 0. */
-        val <V> Map<ValueParameterDescriptor, V>.firstArgument: Map.Entry<ValueParameterDescriptor, V>?
-            get() {
-                for (entry in this) {
-                    if (entry.key.index == 0) return entry
-                }
-                return null
-            }
 
         private val numberFormatter: NumberFormat = DecimalFormat.getNumberInstance().apply {
             minimumFractionDigits = 1

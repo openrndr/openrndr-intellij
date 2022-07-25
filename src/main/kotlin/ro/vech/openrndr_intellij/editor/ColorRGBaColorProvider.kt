@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
 import java.awt.Color
+import java.awt.color.ColorSpace
 import kotlin.math.roundToInt
 import kotlin.reflect.full.memberProperties
 
@@ -167,21 +168,27 @@ class ColorRGBaColorProvider : ElementColorProvider {
         fun ValueParameterDescriptor.isLinearity(): Boolean = name.identifier == "linearity"
 
         fun ColorModel<*>.toAWTColor(): Color = toRGBa().clamped().run {
-            Color(
-                (r * 255.0).roundToInt(),
-                (g * 255.0).roundToInt(),
-                (b * 255.0).roundToInt(),
-                (alpha * 255.0).roundToInt()
-            )
+            val colorSpace = when (linearity) {
+                Linearity.LINEAR, Linearity.ASSUMED_LINEAR -> ColorSpace.CS_LINEAR_RGB
+                Linearity.SRGB, Linearity.ASSUMED_SRGB, Linearity.UNKNOWN -> ColorSpace.CS_sRGB
+            }.let { ColorSpace.getInstance(it) }
+            Color(colorSpace, floatArrayOf(r.toFloat(), g.toFloat(), b.toFloat()), alpha.toFloat())
         }
 
         private fun ColorRGBa.clamped(): ColorRGBa = (0.0..1.0).let {
             copy(r.coerceIn(it), g.coerceIn(it), b.coerceIn(it), alpha.coerceIn(it))
         }
 
-        fun Color.toColorRGBa(linearity: Linearity = Linearity.UNKNOWN) = ColorRGBa(
-            red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0, linearity
-        )
+        fun Color.toColorRGBa(): ColorRGBa {
+            val linearity = when (colorSpace.type) {
+                ColorSpace.CS_LINEAR_RGB -> Linearity.LINEAR
+                ColorSpace.CS_sRGB -> Linearity.SRGB
+                else -> Linearity.UNKNOWN
+            }
+            return getComponents(null).let { (r, g, b, a) ->
+                ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
+            }
+        }
 
         /**
          * Uses a combination of Kotlin and Java reflection to create a String-to-Color mapping
