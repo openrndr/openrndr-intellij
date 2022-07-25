@@ -12,6 +12,8 @@ repositories {
     mavenLocal()
 }
 
+// Keep in mind that test cases have their dependencies defined by the BasePlatformTestCase#getProjectDescriptor,
+// so they might not have the same versions as declared here. Inconsistent versions can cause failing tests.
 dependencies {
     implementation("org.openrndr:openrndr-color:0.5.1-SNAPSHOT")
     implementation("org.openrndr:openrndr-math:0.5.1-SNAPSHOT")
@@ -30,7 +32,7 @@ intellij {
     version.set("222-EAP-SNAPSHOT")
     type.set("IC") // Target IDE Platform
 
-    plugins.set(listOf("org.jetbrains.kotlin"))
+    plugins.set(listOf("com.intellij.java", "org.jetbrains.kotlin"))
 }
 
 tasks {

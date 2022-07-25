@@ -20,11 +20,14 @@
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.java</depends>
     <depends>org.jetbrains.kotlin</depends>
 
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
         <colorProvider implementation="ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider"/>
+        <debugger.compoundRendererProvider
+                implementation="ro.vech.openrndr_intellij.debugger.ColorRGBaRendererProvider" order="first"/>
     </extensions>
 </idea-plugin>
