@@ -11,10 +11,7 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.ColorIcon
-import com.sun.jdi.ClassType
-import com.sun.jdi.DoubleValue
-import com.sun.jdi.ObjectReference
-import com.sun.jdi.Type
+import com.sun.jdi.*
 import java.awt.Color
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
@@ -24,17 +21,14 @@ private val LOG = logger<ColorRGBaRendererProvider>()
 internal class ColorRGBaRendererProvider : CompoundRendererProvider() {
     override fun getName(): String = "ColorRGBa"
 
-    override fun getClassName(): String = CLASS_NAME
-
     /**
-     * The only way this gets called is when we specify our CompoundRendererProvider extension to be ordered first,
-     * because when DebugProcessImpl#getAutoRendererAsync is called, it will look for the first applicable
-     * CompoundRendererProvider in its list of enabled renderers and in the default ordering we are right
+     * The only way this gets called is when we specify our [CompoundRendererProvider] extension to be ordered first,
+     * because when [com.intellij.debugger.engine.DebugProcessImpl.getAutoRendererAsync] is called, it will look for
+     * the first applicable renderer in its list of enabled renderers and in the default ordering we are right
      * after KotlinClassRendererProvider which is applicable for ColorRGBa.
      */
     override fun getIconRenderer(): ValueIconRenderer {
         return ValueIconRenderer r@{ descriptor: ValueDescriptor, evaluationContext: EvaluationContext, listener: DescriptorLabelListener ->
-            LOG.warn("CHECKPOINT: getIconRenderer->ValueIconRenderer")
             var objectReference = (descriptor.value as? ObjectReference) ?: return@r null
             var referenceType = objectReference.referenceType()
             val debugProcess = evaluationContext.debugProcess
@@ -68,14 +62,17 @@ internal class ColorRGBaRendererProvider : CompoundRendererProvider() {
 
     override fun isEnabled(): Boolean = true
 
-    override fun getIsApplicableChecker(): Function<Type, CompletableFuture<Boolean>> {
-        return Function { type: Type ->
-            CompletableFuture.completedFuture(type is ClassType && StringUtil.getPackageName(type.name()) == PACKAGE_NAME)
-        }
+    override fun getIsApplicableChecker(): Function<Type, CompletableFuture<Boolean>> = Function { type: Type ->
+        CompletableFuture.completedFuture(
+            type is ClassType
+                    && StringUtil.getPackageName(type.name()) == PACKAGE_NAME
+                    && type.interfaces().any { it.name() == COLOR_MODEL_NAME }
+        )
     }
 
     companion object {
         private const val PACKAGE_NAME = "org.openrndr.color"
+        private const val COLOR_MODEL_NAME = "$PACKAGE_NAME.ColorModel"
         private const val CLASS_NAME = "$PACKAGE_NAME.ColorRGBa"
     }
 }
