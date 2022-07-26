@@ -1,6 +1,7 @@
 package ro.vech.openrndr_intellij.editor
 
 import com.intellij.openapi.command.CommandProcessor
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.ElementColorProvider
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
@@ -15,39 +16,40 @@ import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
-import org.jetbrains.kotlin.resolve.calls.model.DefaultValueArgument
-import org.jetbrains.kotlin.resolve.calls.model.ExpressionValueArgument
-import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
+import org.jetbrains.kotlin.resolve.calls.model.*
+import org.jetbrains.kotlin.resolve.calls.tower.NewAbstractResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getCall
-import org.jetbrains.kotlin.resolve.calls.util.getParameterForArgument
+import org.jetbrains.kotlin.resolve.calls.util.getResolvedCall
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
 import java.awt.Color
 import java.awt.color.ColorSpace
-import kotlin.math.roundToInt
 import kotlin.reflect.full.memberProperties
+
+private val LOG = logger<ColorRGBaColorProvider>()
 
 class ColorRGBaColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
-        val parent = (element.parent as? KtNameReferenceExpression) ?: return null
-        val grandparent = parent.parent
-        if (grandparent !is KtCallExpression && grandparent !is KtDotQualifiedExpression) return null
+        val outerExpression = (element.parent as? KtNameReferenceExpression) ?: return null
+        // TODO: Does the following actually help with performance?
+        outerExpression.parent?.takeIf { it is KtCallExpression || it is KtDotQualifiedExpression } ?: return null
 
+        val outerExpressionContext = outerExpression.analyze()
         // TODO: orx-color references always fail resolveToCall?
-        val resolvedCall = parent.resolveToCall() ?: return null
+        val resolvedCall =
+            outerExpression.getResolvedCall(outerExpressionContext) as? NewAbstractResolvedCall ?: return null
         val descriptor = resolvedCall.resultingDescriptor
 
         if (!descriptor.isColorModelPackage()) return null
 
-        if (grandparent is KtDotQualifiedExpression) {
+        if (resolvedCall.kotlinCall?.callKind == KotlinCallKind.VARIABLE) {
             return staticColorMap[descriptor.getImportableDescriptor().name.identifier]
         }
 
-        val bindingContext = parent.analyze()
-        val argumentMap = resolvedCall.computeValueArguments(bindingContext) ?: return null
+        val argumentMap = resolvedCall.computeValueArguments(outerExpressionContext) ?: return null
 
         val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor)
         return colorRGBaDescriptor?.colorFromArguments(argumentMap)
@@ -60,11 +62,10 @@ class ColorRGBaColorProvider : ElementColorProvider {
             val outerCallExpression = element.getStrictParentOfType<KtCallExpression>()
             val outerCallContext = outerCallExpression?.analyze() ?: return@Runnable
             val call = outerCallExpression.getCall(outerCallContext) ?: return@Runnable
+            val resolvedCall = call.getResolvedCall(outerCallContext) as? NewAbstractResolvedCall ?: return@Runnable
 
-            val resolvedCall = outerCallExpression.resolveToCall() ?: return@Runnable
-            val targetDescriptor = resolvedCall.resultingDescriptor
-            val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(targetDescriptor) ?: return@Runnable
-
+            val descriptor = resolvedCall.resultingDescriptor
+            val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor) ?: return@Runnable
             val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
             val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (param, _) -> param.isRef() } }
 
@@ -73,45 +74,11 @@ class ColorRGBaColorProvider : ElementColorProvider {
              * and always non-null for color models that do.
              */
             val ref = (refArgumentPair?.value as? ConstantValueContainer.WhitePoint)?.value
-
             val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref)
 
-            // If the resolved call's alpha parameter resolves to a DefaultValueArgument, it means it's not present
-            // at the call site, so we'll need to add the argument ourselves.
-            val alphaParameterWithoutArgument =
-                resolvedCall.valueArguments.firstNotNullOfOrNull { (parameter, argument) ->
-                    parameter.takeIf { it.isAlpha() && argument is DefaultValueArgument }
-                }
-
-            val psiFactory = KtPsiFactory(element)
-
-            val newArgumentList = psiFactory.buildValueArgumentList {
-                appendFixedText("(")
-                call.valueArguments.forEachIndexed { i, argument ->
-                    if (i > 0) {
-                        appendFixedText(", ")
-                    }
-                    val parameter = resolvedCall.getParameterForArgument(argument) ?: return@forEachIndexed
-                    if (argument.getArgumentName() != null) {
-                        appendName(parameter.name)
-                        appendFixedText(" = ")
-                    }
-                    // First 4 parameters of a color are always the color components
-                    if (parameter.index <= 3) {
-                        appendExpression(psiFactory.createExpression(colorArguments[parameter.index]))
-                    } else {
-                        appendExpression(argument.getArgumentExpression())
-                    }
-                }
-                if (alphaParameterWithoutArgument != null) {
-                    appendFixedText(", ")
-                    appendName(alphaParameterWithoutArgument.name)
-                    appendFixedText(" = ")
-                    appendExpression(psiFactory.createExpression(colorArguments.last()))
-                }
-                appendFixedText(")")
+            outerCallExpression.getChildOfType<KtValueArgumentList>()?.let {
+                it.replace(it.constructReplacement(resolvedCall, colorArguments))
             }
-            outerCallExpression.getChildOfType<KtValueArgumentList>()?.replace(newArgumentList)
         }
         // TODO: Should use message bundle for command name
         CommandProcessor.getInstance().executeCommand(element.project, command, "Change Color", null, document)
@@ -139,6 +106,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
                     expression?.let {
                         if (parameter.isRef()) {
                             val refResolvedCall = expression.resolveToCall() ?: return null
+                            // TODO: Handle white points which aren't static
                             val refColor =
                                 staticWhitePointMap[refResolvedCall.resultingDescriptor.getImportableDescriptor().name.identifier]
                                     ?: return null
@@ -150,6 +118,49 @@ class ColorRGBaColorProvider : ElementColorProvider {
                         }
                     }
                 }
+            }
+        }
+
+        /**
+         * Non-destructively builds and returns a new [KtValueArgumentList].
+         *
+         * @param replacementArguments Replacement arguments which are
+         * retrieved by parameter index and converted into expressions
+         */
+        fun KtValueArgumentList.constructReplacement(
+            resolvedCall: ResolvedCall<out CallableDescriptor>, replacementArguments: Array<String>
+        ): KtValueArgumentList {
+            val psiFactory = KtPsiFactory(this)
+            val resolvedArgumentMap = resolvedCall.valueArguments
+            val firstValueArgument = arguments.first()
+            return psiFactory.buildValueArgumentList {
+                appendFixedText("(")
+                for ((parameter, argument) in resolvedArgumentMap) {
+                    val newArgument = replacementArguments.getOrNull(parameter.index)
+                    when (argument) {
+                        is ExpressionValueArgument -> {
+                            val valueArgument = argument.valueArgument!!
+                            if (valueArgument != firstValueArgument) appendFixedText(", ")
+                            valueArgument.getArgumentName()?.asName?.let {
+                                appendName(it)
+                                appendFixedText(" = ")
+                            }
+                            appendExpression(
+                                newArgument?.let(psiFactory::createExpression) ?: valueArgument.getArgumentExpression()
+                            )
+                        }
+                        is DefaultValueArgument -> {
+                            newArgument?.let {
+                                if (parameter.index > 0) appendFixedText(", ")
+                                appendName(parameter.name)
+                                appendFixedText(" = ")
+                                appendExpression(psiFactory.createExpression(it))
+                            }
+                        }
+                        else -> LOG.error("Parameter $parameter has unhandled argument $argument")
+                    }
+                }
+                appendFixedText(")")
             }
         }
 
