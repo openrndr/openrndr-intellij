@@ -8,16 +8,16 @@ import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
-import com.intellij.psi.tree.TokenSet
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.descriptors.containingPackage
-import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
 import org.jetbrains.kotlin.idea.references.SyntheticPropertyAccessorReference
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
+import org.jetbrains.kotlin.psi.psiUtil.getParentOfTypes2
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
@@ -38,14 +38,11 @@ private val LOG = logger<ColorRGBaColorProvider>()
 class ColorRGBaColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
-        val outerExpression = (element.parent as? KtNameReferenceExpression) ?: return null
-        // TODO: Is this faster than COLOR_PROVIDER_PATTERN?
-        if (!(outerExpression.parent is KtCallExpression
-                    || outerExpression.parent is KtDotQualifiedExpression
-                    && outerExpression.references.any { it is SyntheticPropertyAccessorReference })
-        ) {
-            return null
-        }
+        if (!COLOR_PROVIDER_PATTERN.accepts(element)) return null
+        val outerExpression = element.getStrictParentOfType<KtDotQualifiedExpression>()
+            ?: element.getStrictParentOfType<KtCallExpression>()?.let {
+                element.parent as? KtNameReferenceExpression
+            } ?: return null
         val outerExpressionContext = outerExpression.analyze()
         // TODO: orx-color references always fail resolveToCall?
         val resolvedCall =
@@ -68,13 +65,15 @@ class ColorRGBaColorProvider : ElementColorProvider {
         if (element !is LeafPsiElement) return
         val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
         val command = Runnable {
-            val outerCallExpression = element.getStrictParentOfType<KtCallExpression>()
+            val outerCallExpression: KtExpression? =
+                element.getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression
             val outerCallContext = outerCallExpression?.analyze() ?: return@Runnable
             val call = outerCallExpression.getCall(outerCallContext) ?: return@Runnable
             val resolvedCall = call.getResolvedCall(outerCallContext) as? NewAbstractResolvedCall ?: return@Runnable
 
-            val descriptor = resolvedCall.resultingDescriptor
-            val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor) ?: return@Runnable
+            val colorRGBaDescriptor =
+                ColorRGBaDescriptor.fromCallableDescriptor(resolvedCall.resultingDescriptor) ?: return@Runnable
+
             val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
             val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (param, _) -> param.isRef() } }
 
@@ -83,10 +82,40 @@ class ColorRGBaColorProvider : ElementColorProvider {
              * and always non-null for color models that do.
              */
             val ref = (refArgumentPair?.value as? ConstantValueContainer.WhitePoint)?.value
-            val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref)
 
-            outerCallExpression.getChildOfType<KtValueArgumentList>()?.let {
-                it.replace(it.constructReplacement(resolvedCall, colorArguments))
+            val psiFactory = KtPsiFactory(element)
+            if (resolvedCall.valueArguments.isEmpty()) {
+                /**
+                 * This part handles the scenario where the user had a [ColorRGBa.RED] but still wants to use the
+                 * color picker to choose a new color. It's a miracle it works in the first place but the gist of it
+                 * is that you can't replace the element that was provided through setColorTo, because once you replace
+                 * it but continue dragging through the color picker, it will call setColorTo again with the same
+                 * element that you just replaced. In which case it all comes tumbling down because IntelliJ doesn't
+                 * like dealing with non-existent elements.
+                 * We can alleviate this in [getColorFrom] by only returning a [Color] for the **ColorRGBa**.RED part,
+                 * not for ColorRGBa.**RED**. This way we can replace `RED` without touching our actual element,
+                 * `ColorRGBa`. So far so good. But if we want to replace it with a `ColorRGBa(...)` we need to replace
+                 * `RED` with `(...)` but there's also the "dot" between them. Since ColorRGBa as a whole is a
+                 * [KtDotQualifiedExpression], removing the dot would leave us with an invalid PSI structure and
+                 * IntelliJ *really* doesn't like that.
+                 * Now we arrive at our approach. We can replace `RED` with `fromHex(...)`, preserving the dot,
+                 * preserving our element and therefore avoid breaking the PSI structure. It looks contrived but
+                 * after numerous approaches, this actually started to seem like the only one viable.
+                 * We could use [ColorRGBa.fromVector] once we handle Vectors?
+                 */
+                val hexArgument =
+                    ColorRGBaDescriptor.FromHex.argumentsFromColor(color, null).firstOrNull() ?: return@Runnable
+                (outerCallExpression as? KtDotQualifiedExpression)?.selectorExpression?.replace(
+                    psiFactory.createExpression("fromHex($hexArgument)")
+                )
+            } else {
+                val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref)
+                outerCallExpression.getChildOfType<KtValueArgumentList>()?.let {
+                    it.replace(it.constructReplacement(resolvedCall.valueArguments, colorArguments))
+                } ?: outerCallExpression.getChildOfType<KtCallExpression>()?.let {
+                    // TODO: Clean up this hack
+                    it.replace(psiFactory.createExpression("fromHex(${colorArguments.firstOrNull() ?: return@Runnable})"))
+                }
             }
         }
         // TODO: Should use message bundle for command name
@@ -137,11 +166,11 @@ class ColorRGBaColorProvider : ElementColorProvider {
          * retrieved by parameter index and converted into expressions
          */
         fun KtValueArgumentList.constructReplacement(
-            resolvedCall: ResolvedCall<out CallableDescriptor>, replacementArguments: Array<String>
+            resolvedArgumentMap: Map<ValueParameterDescriptor, ResolvedValueArgument>,
+            replacementArguments: Array<String>
         ): KtValueArgumentList {
             val psiFactory = KtPsiFactory(this)
-            val resolvedArgumentMap = resolvedCall.valueArguments
-            val firstValueArgument = arguments.first()
+            val firstValueArgument = arguments.firstOrNull()
             return psiFactory.buildValueArgumentList {
                 appendFixedText("(")
                 for ((parameter, argument) in resolvedArgumentMap) {
@@ -239,20 +268,27 @@ class ColorRGBaColorProvider : ElementColorProvider {
             }
         }
 
-        private val COLOR_PROVIDER_PATTERN: PsiElementPattern.Capture<PsiElement> = psiElement()
-            // Is LeafPsiElement
-            .withElementType(TokenSet.forAllMatching { it.toString() == "IDENTIFIER" && it.language is KotlinLanguage })
+        // @formatter:off
+        private val COLOR_PROVIDER_PATTERN: PsiElementPattern.Capture<PsiElement> = psiElement(KtTokens.IDENTIFIER)
             .withParent(
                 or(
-                    // Is something like ColorRGBa.RED
+                    /** Matches something like **ColorRGBa**.RED */
                     psiElement(KtNameReferenceExpression::class.java)
                         // This disambiguates from import statements which are also dot qualified expressions
                         .withReference(SyntheticPropertyAccessorReference::class.java)
+                        .beforeLeaf(psiElement(KtTokens.DOT)
+                            .beforeLeaf(psiElement(KtTokens.IDENTIFIER)
+                                .beforeLeaf(not(psiElement(KtTokens.LPAR)))
+                            )
+                        )
                         .withParent(KtDotQualifiedExpression::class.java),
-                    // Is something like ColorRGBa(...)
+                    /** Matches something like **ColorRGBa**(...) or ColorRGBa.**fromHex**(..) */
                     psiElement(KtNameReferenceExpression::class.java)
-                        .withParent(KtCallExpression::class.java)
+                        .withReference(SyntheticPropertyAccessorReference::class.java)
+                        .beforeLeaf(psiElement(KtTokens.LPAR))
+                        .withParent(psiElement(KtCallExpression::class.java))
                 )
             )
+        // @formatter:on
     }
 }
