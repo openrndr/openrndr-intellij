@@ -52,8 +52,8 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     fun testColorRGBaStatic() {
         assertGutterIconColor(ColorRGBa.RED.toAWTColor(), "ColorRGBa.RED")
         assertGutterIconColor(ColorRGBa.BLUE.toAWTColor(), "ColorRGBa.BLUE")
-        // TODO: This always fails resolvetoCall
-        // assertGutterIconColor(Color.decode("#ff69b4"), "ColorRGBa.HOT_PINK")
+        // TODO: This always fails resolveToCall
+        // assertGutterIconColor(ColorRGBa.HOT_PINK.toAWTColor(), "ColorRGBa.HOT_PINK")
     }
 
     fun testColorRGBaStaticColorsInline() {
@@ -80,8 +80,7 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
 
     fun testColorRGBaShorthand() {
         assertGutterIconColor(rgb(0.1, 0.9, 0.3, 1.0).toAWTColor(), "rgb(0.1, 0.9, 0.3)")
-        // Re-enable after 0.4.1
-        // assertGutterIconColor(rgb(1.0, 1.0, 1.0, 0.1).toAWTColor(), "rgb(1.0, 0.1)")
+        assertGutterIconColor(rgb(1.0, 1.0, 1.0, 0.1).toAWTColor(), "rgb(1.0, 0.1)")
         assertGutterIconColor(rgb("#0ff").toAWTColor(), "rgb(\"#0ff\")")
     }
 
@@ -152,9 +151,10 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     }
 
     companion object {
+        // You can specify Maven local dependencies here as well
         private val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(
             { IdeaTestUtil.getMockJdk17() },
-            listOf("org.openrndr:openrndr-color:0.4.0", "org.openrndr.extra:orx-color:0.4.0-1")
+            listOf("org.openrndr:openrndr-color:0.5.1-SNAPSHOT", "org.openrndr.extra:orx-color:0.5.1-SNAPSHOT")
         )
 
         private const val IMPORTS = """import org.openrndr.color.*
