@@ -3,14 +3,19 @@ package ro.vech.openrndr_intellij.editor
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.ElementColorProvider
+import com.intellij.patterns.PlatformPatterns.*
+import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
+import com.intellij.psi.tree.TokenSet
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.descriptors.containingPackage
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
+import org.jetbrains.kotlin.idea.references.SyntheticPropertyAccessorReference
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
@@ -34,9 +39,13 @@ class ColorRGBaColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
         val outerExpression = (element.parent as? KtNameReferenceExpression) ?: return null
-        // TODO: Does the following actually help with performance?
-        outerExpression.parent?.takeIf { it is KtCallExpression || it is KtDotQualifiedExpression } ?: return null
-
+        // TODO: Is this faster than COLOR_PROVIDER_PATTERN?
+        if (!(outerExpression.parent is KtCallExpression
+                    || outerExpression.parent is KtDotQualifiedExpression
+                    && outerExpression.references.any { it is SyntheticPropertyAccessorReference })
+        ) {
+            return null
+        }
         val outerExpressionContext = outerExpression.analyze()
         // TODO: orx-color references always fail resolveToCall?
         val resolvedCall =
@@ -229,5 +238,21 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 this[property.name] = property.getter.call(ColorXYZa.Companion) as ColorXYZa
             }
         }
+
+        private val COLOR_PROVIDER_PATTERN: PsiElementPattern.Capture<PsiElement> = psiElement()
+            // Is LeafPsiElement
+            .withElementType(TokenSet.forAllMatching { it.toString() == "IDENTIFIER" && it.language is KotlinLanguage })
+            .withParent(
+                or(
+                    // Is something like ColorRGBa.RED
+                    psiElement(KtNameReferenceExpression::class.java)
+                        // This disambiguates from import statements which are also dot qualified expressions
+                        .withReference(SyntheticPropertyAccessorReference::class.java)
+                        .withParent(KtDotQualifiedExpression::class.java),
+                    // Is something like ColorRGBa(...)
+                    psiElement(KtNameReferenceExpression::class.java)
+                        .withParent(KtCallExpression::class.java)
+                )
+            )
     }
 }
