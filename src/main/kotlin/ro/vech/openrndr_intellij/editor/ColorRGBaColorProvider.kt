@@ -8,9 +8,7 @@ import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
-import org.jetbrains.kotlin.descriptors.CallableDescriptor
-import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
-import org.jetbrains.kotlin.descriptors.containingPackage
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
 import org.jetbrains.kotlin.idea.references.SyntheticPropertyAccessorReference
@@ -40,9 +38,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
         if (element !is LeafPsiElement) return null
         if (!COLOR_PROVIDER_PATTERN.accepts(element)) return null
         val outerExpression = element.getStrictParentOfType<KtDotQualifiedExpression>()
-            ?: element.getStrictParentOfType<KtCallExpression>()?.let {
-                element.parent as? KtNameReferenceExpression
-            } ?: return null
+            ?: element.getStrictParentOfType<KtNameReferenceExpression>() ?: return null
         val outerExpressionContext = outerExpression.analyze()
         // TODO: orx-color references always fail resolveToCall?
         val resolvedCall =
@@ -64,27 +60,18 @@ class ColorRGBaColorProvider : ElementColorProvider {
     override fun setColorTo(element: PsiElement, color: Color) {
         if (element !is LeafPsiElement) return
         val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
-        val command = Runnable {
+        val command = Runnable r@{
             val outerCallExpression: KtExpression? =
                 element.getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression
-            val outerCallContext = outerCallExpression?.analyze() ?: return@Runnable
-            val call = outerCallExpression.getCall(outerCallContext) ?: return@Runnable
-            val resolvedCall = call.getResolvedCall(outerCallContext) as? NewAbstractResolvedCall ?: return@Runnable
-
-            val colorRGBaDescriptor =
-                ColorRGBaDescriptor.fromCallableDescriptor(resolvedCall.resultingDescriptor) ?: return@Runnable
-
-            val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
-            val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (param, _) -> param.isRef() } }
-
-            /**
-             * This will always be null for color models which don't implement [ReferenceWhitePoint]
-             * and always non-null for color models that do.
-             */
-            val ref = (refArgumentPair?.value as? ConstantValueContainer.WhitePoint)?.value
+            val outerCallContext = outerCallExpression?.analyze() ?: return@r
+            val call = outerCallExpression.getCall(outerCallContext) ?: return@r
+            val resolvedCall = call.getResolvedCall(outerCallContext) as? NewAbstractResolvedCall ?: return@r
 
             val psiFactory = KtPsiFactory(element)
             if (resolvedCall.valueArguments.isEmpty()) {
+                val classDescriptor =
+                    (resolvedCall.resultingDescriptor as? DeclarationDescriptor)?.getTopLevelContainingClassifier() as? ClassDescriptor
+                if (classDescriptor?.name?.identifier != "ColorRGBa") return@r
                 /**
                  * This part handles the scenario where the user had a [ColorRGBa.RED] but still wants to use the
                  * color picker to choose a new color. It's a miracle it works in the first place but the gist of it
@@ -101,20 +88,36 @@ class ColorRGBaColorProvider : ElementColorProvider {
                  * Now we arrive at our approach. We can replace `RED` with `fromHex(...)`, preserving the dot,
                  * preserving our element and therefore avoid breaking the PSI structure. It looks contrived but
                  * after numerous approaches, this actually started to seem like the only one viable.
-                 * We could use [ColorRGBa.fromVector] once we handle Vectors?
+                 * I think the proper way to do this to extend our own codeInsight.lineMarkerProvider giving us full
+                 * control over the color picker behavior.
                  */
                 val hexArgument =
-                    ColorRGBaDescriptor.FromHex.argumentsFromColor(color, null).firstOrNull() ?: return@Runnable
+                    ColorRGBaDescriptor.FromHex.argumentsFromColor(color, null).firstOrNull() ?: return@r
                 (outerCallExpression as? KtDotQualifiedExpression)?.selectorExpression?.replace(
                     psiFactory.createExpression("fromHex($hexArgument)")
                 )
             } else {
+                val colorRGBaDescriptor =
+                    ColorRGBaDescriptor.fromCallableDescriptor(resolvedCall.resultingDescriptor) ?: return@r
+
+                val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
+                val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (param, _) -> param.isRef() } }
+
+                /**
+                 * This will always be null for color models which don't implement [ReferenceWhitePoint]
+                 * and always non-null for color models that do.
+                 */
+                val ref = (refArgumentPair?.value as? ConstantValueContainer.WhitePoint)?.value
                 val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref)
                 outerCallExpression.getChildOfType<KtValueArgumentList>()?.let {
                     it.replace(it.constructReplacement(resolvedCall.valueArguments, colorArguments))
                 } ?: outerCallExpression.getChildOfType<KtCallExpression>()?.let {
+                    // This handles the scenario after ColorRGBa.RED has been replaced by ColorRGBa.fromHex(...)
+                    // without closing the color picker and picking a new color. I think IntelliJ has not yet recognized
+                    // the PSI structure changes and is not aware we now have a KtValueArgumentList following the
+                    // KtCallExpression.
                     // TODO: Clean up this hack
-                    it.replace(psiFactory.createExpression("fromHex(${colorArguments.firstOrNull() ?: return@Runnable})"))
+                    it.replace(psiFactory.createExpression("fromHex(${colorArguments.firstOrNull() ?: return@r})"))
                 }
             }
         }
@@ -282,7 +285,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
                             )
                         )
                         .withParent(KtDotQualifiedExpression::class.java),
-                    /** Matches something like **ColorRGBa**(...) or ColorRGBa.**fromHex**(..) */
+                    /** Matches something like **ColorRGBa**(...) or ColorRGBa.**fromHex**(...) */
                     psiElement(KtNameReferenceExpression::class.java)
                         .withReference(SyntheticPropertyAccessorReference::class.java)
                         .beforeLeaf(psiElement(KtTokens.LPAR))
