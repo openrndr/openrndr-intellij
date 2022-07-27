@@ -99,15 +99,13 @@ class ColorRGBaColorProvider : ElementColorProvider {
                     psiFactory.createExpression("fromHex($hexArgument)")
                 )
             } else {
-                val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
-                val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (param, _) -> param.isRef() } }
-
                 /**
                  * This will always be null for color models which don't implement [ReferenceWhitePoint]
                  * and always non-null for color models that do.
                  */
-                val ref = (refArgumentPair?.value as? ConstantValueContainer.WhitePoint)?.value
-                val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref)
+                val ref = resolvedCall.computeValueArguments(outerCallContext)
+                    ?.firstNotNullOfOrNull { it.takeIf { (p, _) -> p.isRef() }?.value } as? ConstantValueContainer.WhitePoint
+                val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref?.value)
                 outerCallExpression.getChildOfType<KtValueArgumentList>()?.let {
                     it.replace(it.constructReplacement(resolvedCall.valueArguments, colorArguments))
                 } ?: outerCallExpression.getChildOfType<KtCallExpression>()?.let {
@@ -135,34 +133,34 @@ class ColorRGBaColorProvider : ElementColorProvider {
             return buildMap {
                 for ((parameter, argument) in valueArguments) {
                     val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
-                    if (expression == null && parameter.hasDefaultValue()) {
-                        when {
-                            parameter.isAlpha() -> set(parameter, ConstantValueContainer.ALPHA)
-                            parameter.isRef() -> set(parameter, ConstantValueContainer.REF)
-                            parameter.isLinearity() -> set(parameter, ConstantValueContainer.LINEARITY)
-                        }
-                        continue
-                    }
-                    expression?.let {
-                        if (parameter.isRef()) {
-                            val refContext = it.analyze()
-                            val refResolvedCall = it.resolveToCall() ?: return null
-                            // TODO: Handle white points which aren't static
-                            val refColor =
-                                staticWhitePointMap[refResolvedCall.resultingDescriptor.getImportableDescriptor().name.identifier]
-                                    ?: refResolvedCall.computeValueArguments(refContext)?.computeWhitePoint() ?: return null
-                            set(parameter, ConstantValueContainer.WhitePoint(refColor))
+                        ?: if (parameter.hasDefaultValue()) {
+                            when {
+                                parameter.isAlpha() -> set(parameter, ConstantValueContainer.ALPHA)
+                                parameter.isRef() -> set(parameter, ConstantValueContainer.REF)
+                                parameter.isLinearity() -> set(parameter, ConstantValueContainer.LINEARITY)
+                                else -> return null
+                            }
+                            continue
                         } else {
-                            val constant = ConstantExpressionEvaluator.getConstant(it, bindingContext)
-                                ?.toConstantValue(parameter.type) ?: return null
-                            set(parameter, ConstantValueContainer.Constant(constant))
+                            return null
                         }
+                    if (parameter.isRef()) {
+                        val refContext = expression.analyze()
+                        val refResolvedCall = expression.resolveToCall() ?: return null
+                        val refColor =
+                            staticWhitePointMap[refResolvedCall.resultingDescriptor.getImportableDescriptor().name.identifier]
+                                ?: refResolvedCall.computeValueArguments(refContext)?.computeWhitePoint() ?: return null
+                        set(parameter, ConstantValueContainer.WhitePoint(refColor))
+                    } else {
+                        val constant = ConstantExpressionEvaluator.getConstant(expression, bindingContext)
+                            ?.toConstantValue(parameter.type) ?: return null
+                        set(parameter, ConstantValueContainer.Constant(constant))
                     }
                 }
             }
         }
 
-        fun ArgumentMap.computeWhitePoint(): ColorXYZa? = colorComponents.let {
+        private fun ArgumentMap.computeWhitePoint(): ColorXYZa? = colorComponents.let {
             when (it.size) {
                 3 -> ColorXYZa(it[0], it[1], it[2], 1.0)
                 4 -> ColorXYZa(it[0], it[1], it[2], it[3])
