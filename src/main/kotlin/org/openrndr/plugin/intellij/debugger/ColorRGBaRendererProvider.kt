@@ -10,15 +10,15 @@ import com.intellij.debugger.ui.tree.render.ValueIconRenderer
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.scale.JBUIScale
-import com.intellij.util.ui.ColorIcon
 import com.sun.jdi.*
+import org.openrndr.plugin.intellij.ui.RoundColorIcon
 import java.awt.Color
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
 private val LOG = logger<ColorRGBaRendererProvider>()
 
-internal class ColorRGBaRendererProvider : CompoundRendererProvider() {
+class ColorRGBaRendererProvider : CompoundRendererProvider() {
     override fun getName(): String = "ColorRGBa"
 
     /**
@@ -27,18 +27,16 @@ internal class ColorRGBaRendererProvider : CompoundRendererProvider() {
      * the first applicable renderer in its list of enabled renderers and in the default ordering we are right
      * after KotlinClassRendererProvider which is applicable for ColorRGBa.
      */
-    override fun getIconRenderer(): ValueIconRenderer {
-        return ValueIconRenderer r@{ descriptor: ValueDescriptor, evaluationContext: EvaluationContext, listener: DescriptorLabelListener ->
+    override fun getIconRenderer(): ValueIconRenderer =
+        ValueIconRenderer r@{ descriptor: ValueDescriptor, evaluationContext: EvaluationContext, listener: DescriptorLabelListener ->
             var objectReference = (descriptor.value as? ObjectReference) ?: return@r null
             var referenceType = objectReference.referenceType()
             val debugProcess = evaluationContext.debugProcess
             return@r try {
                 // If it isn't ColorRGBa, we'll need to convert it to one
                 if (referenceType.name() != CLASS_NAME) {
-                    val toRGBa = DebuggerUtils.findMethod(referenceType, "toRGBa", null) ?: run {
-                        LOG.error("Failed to find method \"toRGBa\" for $objectReference")
-                        return@r null
-                    }
+                    val toRGBa = DebuggerUtils.findMethod(referenceType, "toRGBa", null)
+                        ?: return@r null.apply { LOG.error("Failed to find method \"toRGBa\" for $objectReference") }
                     objectReference = debugProcess.invokeMethod(
                         evaluationContext, objectReference, toRGBa, emptyList()
                     ) as? ObjectReference ?: return@r null
@@ -52,13 +50,12 @@ internal class ColorRGBaRendererProvider : CompoundRendererProvider() {
                     ) as? DoubleValue
                     value?.doubleValue()?.toFloat() ?: return@r null
                 }
-                return@r JBUIScale.scaleIcon(ColorIcon(16, 12, Color(r, g, b, a), true))
+                JBUIScale.scaleIcon(RoundColorIcon(16, 12, Color(r, g, b, a)))
             } catch (e: EvaluateException) {
                 LOG.error(e)
                 null
             }
         }
-    }
 
     override fun isEnabled(): Boolean = true
 
