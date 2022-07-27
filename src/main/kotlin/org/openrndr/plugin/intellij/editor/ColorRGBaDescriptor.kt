@@ -1,6 +1,5 @@
 package org.openrndr.plugin.intellij.editor
 
-import com.jetbrains.rd.util.firstOrNull
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.resolve.constants.*
@@ -31,8 +30,8 @@ internal enum class ColorRGBaDescriptor {
         }
 
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
-            return when (val firstValue =
-                (argumentMap.firstOrNull()?.value as? ConstantValueContainer.Constant)?.value) {
+            val anyArgumentValue = argumentMap.values.firstOrNull() as? ConstantValueContainer.Constant
+            return when (val firstValue = anyArgumentValue?.value) {
                 is IntValue -> ColorRGBa.fromHex(firstValue.value).toAWTColor()
                 is StringValue -> try {
                     ColorRGBa.fromHex(firstValue.value).toAWTColor()
@@ -50,16 +49,15 @@ internal enum class ColorRGBaDescriptor {
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
             // The argument types for either call are homogenous so it doesn't matter which argument the map
             // returns for us as we're only interested in knowing the type
-            val anyArgumentValue = argumentMap.values.firstOrNull()
-            return when (val firstValue = (anyArgumentValue as? ConstantValueContainer.Constant)?.value) {
-                is DoubleValue -> {
-                    val doubles = argumentMap.colorComponents
-                    // TODO: Isn't alpha always included?
-                    when (doubles.size) {
-                        1 -> rgb(doubles[0])
-                        2 -> rgb(doubles[0], doubles[1])
-                        3 -> rgb(doubles[0], doubles[1], doubles[2])
-                        4 -> rgb(doubles[0], doubles[1], doubles[2], doubles[3])
+            val anyArgumentValue = argumentMap.values.firstOrNull() as? ConstantValueContainer.Constant
+            return when (val firstValue = anyArgumentValue?.value) {
+                is DoubleValue -> argumentMap.colorComponents.let {
+                    // Alpha is always included so we only ever have either 2 or 4 components, but whatever
+                    when (it.size) {
+                        1 -> rgb(it[0])
+                        2 -> rgb(it[0], it[1])
+                        3 -> rgb(it[0], it[1], it[2])
+                        4 -> rgb(it[0], it[1], it[2], it[3])
                         else -> null
                     }?.toAWTColor()
                 }
@@ -138,7 +136,7 @@ internal enum class ColorRGBaDescriptor {
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXYZa)
     },
     ColorYxyaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toXYZa().toRGBa() }
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { ColorYxya.fromXYZa(it.toXYZa()) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorYxya)
     },
     ColorHPLUVaConstructor {
@@ -216,11 +214,10 @@ internal enum class ColorRGBaDescriptor {
 
         fun colorFromArgumentsSimple(
             argumentMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
-        ): Color? {
-            val doubles = argumentMap.colorComponents
-            return when (doubles.size) {
-                3 -> colorConstructor(doubles[0], doubles[1], doubles[2], 1.0)
-                4 -> colorConstructor(doubles[0], doubles[1], doubles[2], doubles[3])
+        ): Color? = argumentMap.colorComponents.let {
+            when (it.size) {
+                3 -> colorConstructor(it[0], it[1], it[2], 1.0)
+                4 -> colorConstructor(it[0], it[1], it[2], it[3])
                 else -> null
             }?.toAWTColor()
         }
@@ -229,31 +226,20 @@ internal enum class ColorRGBaDescriptor {
             argumentMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double, ColorXYZa) -> T
         ): Color? where T : ColorModel<T>, T : ReferenceWhitePoint {
             val components = argumentMap.toList().sortedBy { it.first.index }
-            return when (components.size) {
-                3 -> {
-                    // TODO: Is this ever reached?
-                    val doubles = components.map {
-                        ((it.second as? ConstantValueContainer.Constant)?.value as? DoubleValue ?: return null).value
-                    }.takeIf { it.size == 3 } ?: return null
-                    colorConstructor(doubles[0], doubles[1], doubles[2], 1.0, ColorXYZa.NEUTRAL)
-                }
-                4, 5 -> {
-                    val doubles = mutableListOf<Double>()
-                    var ref: ColorXYZa = ColorXYZa.NEUTRAL
-                    for ((_, constant) in components) {
-                        when (constant) {
-                            is ConstantValueContainer.Constant -> if (constant.value is DoubleValue) {
-                                doubles.add(constant.value.value)
-                            }
-                            is ConstantValueContainer.WhitePoint -> ref = constant.value
-                        }
+            if (components.size !in 3..5) return null
+            val doubles = mutableListOf<Double>()
+            var ref: ColorXYZa = ColorXYZa.NEUTRAL
+            for ((_, constant) in components) {
+                when (constant) {
+                    is ConstantValueContainer.Constant -> if (constant.value is DoubleValue) {
+                        doubles.add(constant.value.value)
                     }
-                    when (doubles.size) {
-                        3 -> colorConstructor(doubles[0], doubles[1], doubles[2], 1.0, ref)
-                        4 -> colorConstructor(doubles[0], doubles[1], doubles[2], doubles[3], ref)
-                        else -> null
-                    }
+                    is ConstantValueContainer.WhitePoint -> ref = constant.value
                 }
+            }
+            return when (doubles.size) {
+                3 -> colorConstructor(doubles[0], doubles[1], doubles[2], 1.0, ref)
+                4 -> colorConstructor(doubles[0], doubles[1], doubles[2], doubles[3], ref)
                 else -> null
             }?.toAWTColor()
         }
