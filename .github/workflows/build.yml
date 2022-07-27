@@ -33,7 +33,7 @@ jobs:
         id: intellij-tag
         with:
           repository: JetBrains/intellij-community
-          regex: ^idea/222.*
+          regex: ^idea/222.3345.118
 
       - name: Checkout intellij-community repository
         uses: actions/checkout@v3
