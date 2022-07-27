@@ -1,4 +1,4 @@
-package ro.vech.openrndr_intellij.editor
+package org.openrndr.plugin.intellij.editor
 
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName

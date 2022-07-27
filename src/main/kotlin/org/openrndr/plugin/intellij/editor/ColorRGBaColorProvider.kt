@@ -1,4 +1,4 @@
-package ro.vech.openrndr_intellij.editor
+package org.openrndr.plugin.intellij.editor
 
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.logger

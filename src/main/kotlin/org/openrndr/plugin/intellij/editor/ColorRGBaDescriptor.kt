@@ -1,4 +1,4 @@
-package ro.vech.openrndr_intellij.editor
+package org.openrndr.plugin.intellij.editor
 
 import com.jetbrains.rd.util.firstOrNull
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
@@ -7,8 +7,8 @@ import org.jetbrains.kotlin.resolve.constants.*
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
-import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
-import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toColorRGBa
+import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
+import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toColorRGBa
 import java.awt.Color
 import java.text.DecimalFormat
 import java.text.NumberFormat

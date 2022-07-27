@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.intellij") version "1.7.0"
 }
 
-group = "ro.vech"
+group = "org.openrndr"
 version = "1.0-SNAPSHOT"
 
 repositories {
