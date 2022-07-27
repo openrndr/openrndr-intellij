@@ -50,8 +50,8 @@ internal enum class ColorRGBaDescriptor {
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
             // The argument types for either call are homogenous so it doesn't matter which argument the map
             // returns for us as we're only interested in knowing the type
-            val anyArgument = argumentMap.firstOrNull()
-            return when (val firstValue = (anyArgument?.value as? ConstantValueContainer.Constant)?.value) {
+            val anyArgumentValue = argumentMap.values.firstOrNull()
+            return when (val firstValue = (anyArgumentValue as? ConstantValueContainer.Constant)?.value) {
                 is DoubleValue -> {
                     val doubles = argumentMap.colorComponents
                     // TODO: Isn't alpha always included?
