@@ -1,11 +1,13 @@
+fun properties(key: String) = project.findProperty(key).toString()
+
 plugins {
     java
     kotlin("jvm") version "1.7.10"
     id("org.jetbrains.intellij") version "1.7.0"
 }
 
-group = "org.openrndr"
-version = "1.0-SNAPSHOT"
+group = "org.openrndr.plugin.intellij"
+version = properties("pluginVersion")
 
 repositories {
     mavenCentral()
@@ -56,6 +58,7 @@ tasks {
     patchPluginXml {
         sinceBuild.set("222")
         untilBuild.set("223.*")
+        version.set(properties("pluginVersion"))
     }
 
     signPlugin {
@@ -66,5 +69,9 @@ tasks {
 
     publishPlugin {
         token.set(System.getenv("PUBLISH_TOKEN"))
+        // pluginVersion is based on the SemVer (https://semver.org) and supports pre-release labels, like 2.1.7-alpha.3
+        // Specify pre-release label to publish the plugin in a custom Release Channel automatically. Read more:
+        // https://plugins.jetbrains.com/docs/intellij/deployment.html#specifying-a-release-channel
+        channels.set(listOf(properties("pluginVersion").split('-').getOrElse(1) { "default" }.split('.').first()))
     }
 }
