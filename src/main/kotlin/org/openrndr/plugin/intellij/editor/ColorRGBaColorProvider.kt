@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluat
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
+import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor.Companion.colorComponents
 import java.awt.Color
 import java.awt.color.ColorSpace
 import kotlin.reflect.full.memberProperties
@@ -61,14 +62,15 @@ class ColorRGBaColorProvider : ElementColorProvider {
         if (element !is LeafPsiElement) return
         val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
         val command = Runnable r@{
-            val outerCallExpression: KtExpression? =
+            val outerCallExpression =
                 element.getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression
             val outerCallContext = outerCallExpression?.analyze() ?: return@r
-            val call = outerCallExpression.getCall(outerCallContext) ?: return@r
-            val resolvedCall = call.getResolvedCall(outerCallContext) as? NewAbstractResolvedCall ?: return@r
+            val call = outerCallExpression.getCall(outerCallContext)
+            val resolvedCall = call?.getResolvedCall(outerCallContext) as? NewAbstractResolvedCall ?: return@r
 
+            val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(resolvedCall.resultingDescriptor)
             val psiFactory = KtPsiFactory(element)
-            if (resolvedCall.valueArguments.isEmpty()) {
+            if (colorRGBaDescriptor == null) {
                 val classDescriptor =
                     (resolvedCall.resultingDescriptor as? DeclarationDescriptor)?.getTopLevelContainingClassifier() as? ClassDescriptor
                 if (classDescriptor?.name?.identifier != "ColorRGBa") return@r
@@ -97,9 +99,6 @@ class ColorRGBaColorProvider : ElementColorProvider {
                     psiFactory.createExpression("fromHex($hexArgument)")
                 )
             } else {
-                val colorRGBaDescriptor =
-                    ColorRGBaDescriptor.fromCallableDescriptor(resolvedCall.resultingDescriptor) ?: return@r
-
                 val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
                 val refArgumentPair = argumentMap?.firstNotNullOfOrNull { it.takeIf { (param, _) -> param.isRef() } }
 
@@ -146,11 +145,12 @@ class ColorRGBaColorProvider : ElementColorProvider {
                     }
                     expression?.let {
                         if (parameter.isRef()) {
-                            val refResolvedCall = expression.resolveToCall() ?: return null
+                            val refContext = it.analyze()
+                            val refResolvedCall = it.resolveToCall() ?: return null
                             // TODO: Handle white points which aren't static
                             val refColor =
                                 staticWhitePointMap[refResolvedCall.resultingDescriptor.getImportableDescriptor().name.identifier]
-                                    ?: return null
+                                    ?: refResolvedCall.computeValueArguments(refContext)?.computeWhitePoint() ?: return null
                             set(parameter, ConstantValueContainer.WhitePoint(refColor))
                         } else {
                             val constant = ConstantExpressionEvaluator.getConstant(it, bindingContext)
@@ -159,6 +159,14 @@ class ColorRGBaColorProvider : ElementColorProvider {
                         }
                     }
                 }
+            }
+        }
+
+        fun ArgumentMap.computeWhitePoint(): ColorXYZa? = colorComponents.let {
+            when (it.size) {
+                3 -> ColorXYZa(it[0], it[1], it[2], 1.0)
+                4 -> ColorXYZa(it[0], it[1], it[2], it[3])
+                else -> null
             }
         }
 

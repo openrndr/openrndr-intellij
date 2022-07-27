@@ -79,11 +79,14 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     }
 
     fun testColorRGBaShorthand() {
-        assertGutterIconColor(rgb(0.1, 0.9, 0.3, 1.0).toAWTColor(), "rgb(0.1, 0.9, 0.3)")
-        assertGutterIconColor(rgb(1.0, 1.0, 1.0, 0.1).toAWTColor(), "rgb(1.0, 0.1)")
+        assertGutterIconColor(rgb(0.7).toAWTColor(), "rgb(0.7)")
+        assertGutterIconColor(rgb(0.6,0.1).toAWTColor(), "rgb(0.6, 0.1)")
+        assertGutterIconColor(rgb(0.1, 0.9, 0.3).toAWTColor(), "rgb(0.1, 0.9, 0.3)")
+        assertGutterIconColor(rgb(1.0, 0.1, 0.3, 0.5).toAWTColor(), "rgb(1.0, 0.1, 0.3, 0.5)")
         assertGutterIconColor(rgb("#0ff").toAWTColor(), "rgb(\"#0ff\")")
     }
 
+    @Suppress("MayBeConstant")
     fun testColorRGBaConstructorWithConst() {
         @Language("kt")
         val prelude = """
@@ -109,6 +112,11 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     fun testColorHSVaShorthand() {
         assertGutterIconColor(hsv(303.5, 0.07, 0.8).toAWTColor(), "hsv(303.5, 0.07, 0.8)")
         assertGutterIconColor(hsv(89.3, 0.13, 0.9, 0.95).toAWTColor(), "hsv(89.3, 0.13, 0.9, 0.95)")
+    }
+
+    fun testColorHSLaShorthand() {
+        assertGutterIconColor(hsl(303.5, 0.07, 0.8).toAWTColor(), "hsl(303.5, 0.07, 0.8)")
+        assertGutterIconColor(hsl(89.3, 0.13, 0.9, 0.95).toAWTColor(), "hsl(89.3, 0.13, 0.9, 0.95)")
     }
 
     fun testColorRGBaNamedArguments() {
@@ -142,6 +150,15 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
         assertGutterIconColor(
             ColorLABa(73.233, 20.105, 67.223, alpha = 0.812).toAWTColor(),
             "ColorLABa(73.233, 20.105, 67.223, alpha = 0.812)"
+        )
+    }
+
+    fun testColorLABaWithArbitraryRef() {
+        assertGutterIconMultiColor(
+            arrayOf(
+                ColorLABa(47.13, 30.07, 7.56, 0.78, ColorXYZa(0.16, 0.13, 0.11, 1.0)).toAWTColor(),
+                ColorXYZa(0.16, 0.13, 0.11, 1.0).toAWTColor()
+            ), "ColorLABa(47.13, 30.07, 7.56, 0.78, ColorXYZa(0.16, 0.13, 0.11, alpha = 1.0))"
         )
     }
 
