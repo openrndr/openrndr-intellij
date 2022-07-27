@@ -1,4 +1,4 @@
-package ro.vech.openrndr_intellij.editor
+package org.openrndr.plugin.intellij.editor
 
 import com.intellij.testFramework.IdeaTestUtil
 import com.intellij.testFramework.LightProjectDescriptor
@@ -9,7 +9,7 @@ import com.intellij.util.ui.ColorsIcon
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.openrndr.color.*
-import ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
+import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
 import java.awt.Color
 
 class ColorRGBaColorProviderTest : BasePlatformTestCase() {

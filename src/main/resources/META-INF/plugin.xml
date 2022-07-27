@@ -1,11 +1,11 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
-    <id>ro.vech.openrndr-intellij</id>
+    <id>org.openrndr.plugin.intellij</id>
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
-    <name>OPENRNDR (Unofficial)</name>
+    <name>OPENRNDR</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
     <vendor email="openrndr-plugin@vech.ro">Vechro</vendor>
@@ -14,7 +14,7 @@
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description><![CDATA[
-    Unofficial plugin for the OPENRNDR framework.<br>
+    Official plugin for the OPENRNDR framework in Kotlin.<br>
   ]]></description>
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
@@ -26,8 +26,8 @@
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <colorProvider implementation="ro.vech.openrndr_intellij.editor.ColorRGBaColorProvider"/>
+        <colorProvider implementation="org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider"/>
         <debugger.compoundRendererProvider
-                implementation="ro.vech.openrndr_intellij.debugger.ColorRGBaRendererProvider" order="first"/>
+                implementation="org.openrndr.plugin.intellij.debugger.ColorRGBaRendererProvider" order="first"/>
     </extensions>
 </idea-plugin>

@@ -1,4 +1,4 @@
-package ro.vech.openrndr_intellij.debugger
+package org.openrndr.plugin.intellij.debugger
 
 import com.intellij.debugger.engine.DebuggerUtils
 import com.intellij.debugger.engine.evaluation.EvaluateException
