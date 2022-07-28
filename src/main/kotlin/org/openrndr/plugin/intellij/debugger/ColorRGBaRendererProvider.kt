@@ -59,7 +59,7 @@ class ColorRGBaRendererProvider : CompoundRendererProvider() {
 
     override fun isEnabled(): Boolean = true
 
-    override fun getIsApplicableChecker(): Function<Type, CompletableFuture<Boolean>> = Function { type: Type ->
+    override fun getIsApplicableChecker(): Function<Type, CompletableFuture<Boolean>> = Function { type: Type? ->
         CompletableFuture.completedFuture(
             type is ClassType
                     && StringUtil.getPackageName(type.name()) == PACKAGE_NAME
