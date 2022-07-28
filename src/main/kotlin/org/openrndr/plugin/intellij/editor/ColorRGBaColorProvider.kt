@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
 import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor.Companion.colorComponents
 import java.awt.Color
-import java.awt.color.ColorSpace
 import kotlin.reflect.full.memberProperties
 
 private val LOG = logger<ColorRGBaColorProvider>()
@@ -93,8 +92,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
                  * I think the proper way to do this to extend our own codeInsight.lineMarkerProvider giving us full
                  * control over the color picker behavior.
                  */
-                val hexArgument =
-                    ColorRGBaDescriptor.FromHex.argumentsFromColor(color, null).firstOrNull() ?: return@r
+                val hexArgument = ColorRGBaDescriptor.FromHex.argumentsFromColor(color, null).firstOrNull() ?: return@r
                 (outerCallExpression as? KtDotQualifiedExpression)?.selectorExpression?.replace(
                     psiFactory.createExpression("fromHex($hexArgument)")
                 )
@@ -103,8 +101,9 @@ class ColorRGBaColorProvider : ElementColorProvider {
                  * This will always be null for color models which don't implement [ReferenceWhitePoint]
                  * and always non-null for color models that do.
                  */
-                val ref = resolvedCall.computeValueArguments(outerCallContext)
-                    ?.firstNotNullOfOrNull { it.takeIf { (p, _) -> p.isRef() }?.value } as? ConstantValueContainer.WhitePoint
+                val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
+                val ref =
+                    argumentMap?.firstNotNullOfOrNull { it.takeIf { (p, _) -> p.isRef() }?.value } as? ConstantValueContainer.WhitePoint
                 val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref?.value)
                 outerCallExpression.getChildOfType<KtValueArgumentList>()?.let {
                     it.replace(it.constructReplacement(resolvedCall.valueArguments, colorArguments))
@@ -226,27 +225,17 @@ class ColorRGBaColorProvider : ElementColorProvider {
         fun ValueParameterDescriptor.isLinearity(): Boolean = name.identifier == "linearity"
 
         fun ColorModel<*>.toAWTColor(): Color = toRGBa().clamped().run {
-            val colorSpace = when (linearity) {
-                Linearity.LINEAR, Linearity.ASSUMED_LINEAR -> ColorSpace.CS_LINEAR_RGB
-                Linearity.SRGB, Linearity.ASSUMED_SRGB, Linearity.UNKNOWN -> ColorSpace.CS_sRGB
-            }.let { ColorSpace.getInstance(it) }
-            Color(colorSpace, floatArrayOf(r.toFloat(), g.toFloat(), b.toFloat()), alpha.toFloat())
+            Color(r.toFloat(), g.toFloat(), b.toFloat(), alpha.toFloat())
         }
 
         private fun ColorRGBa.clamped(): ColorRGBa = (0.0..1.0).let {
             copy(r.coerceIn(it), g.coerceIn(it), b.coerceIn(it), alpha.coerceIn(it))
         }
 
-        fun Color.toColorRGBa(): ColorRGBa {
-            val linearity = when (colorSpace.type) {
-                ColorSpace.CS_LINEAR_RGB -> Linearity.LINEAR
-                ColorSpace.CS_sRGB -> Linearity.SRGB
-                else -> Linearity.UNKNOWN
-            }
-            return getComponents(null).let { (r, g, b, a) ->
+        fun Color.toColorRGBa(linearity: Linearity = Linearity.UNKNOWN): ColorRGBa =
+            getComponents(null).let { (r, g, b, a) ->
                 ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
             }
-        }
 
         /**
          * Uses a combination of Kotlin and Java reflection to create a String-to-Color mapping

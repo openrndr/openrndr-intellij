@@ -2,7 +2,9 @@ package org.openrndr.plugin.intellij.editor
 
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
-import org.jetbrains.kotlin.resolve.constants.*
+import org.jetbrains.kotlin.resolve.constants.DoubleValue
+import org.jetbrains.kotlin.resolve.constants.IntValue
+import org.jetbrains.kotlin.resolve.constants.StringValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
@@ -13,6 +15,8 @@ import java.text.DecimalFormat
 import java.text.NumberFormat
 
 internal typealias ArgumentMap = Map<ValueParameterDescriptor, ConstantValueContainer<*>>
+
+private val DEFAULT_COLORRGBA = ColorRGBa(1.0, 1.0, 1.0, 1.0, Linearity.UNKNOWN)
 
 internal enum class ColorRGBaDescriptor {
     FromHex {
@@ -41,10 +45,12 @@ internal enum class ColorRGBaDescriptor {
                 else -> null
             }
         }
+
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.linearity
     },
     RGB {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toRGBa)
+            argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toRGBa)
 
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
             // The argument types for either call are homogenous so it doesn't matter which argument the map
@@ -69,103 +75,110 @@ internal enum class ColorRGBaDescriptor {
                 else -> null
             }
         }
-    },
-    ColorRGBaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
-            argumentsFromColorSimple(color, ColorRGBa::toRGBa)
 
-        override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
-            val components = argumentMap.toList().sortedBy { it.first.index }
-            if (components.size != 5) return null
-            val doubles = mutableListOf<Double>()
-            var linearity: Linearity = Linearity.UNKNOWN
-            for ((_, constant) in components) {
-                if (constant !is ConstantValueContainer.Constant) return null
-                when (val value = constant.value) {
-                    is DoubleValue -> doubles.add(value.value)
-                    is EnumValue -> linearity = Linearity.valueOf(value.enumEntryName.identifier)
-                }
-            }
-            return ColorRGBa(doubles[0], doubles[1], doubles[2], doubles[3], linearity).toAWTColor()
-        }
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.linearity
     },
 
     // @formatter:off
+    ColorRGBaConstructor {
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toRGBa)
+        override fun colorFromArguments(argumentMap: ArgumentMap): Color? = colorFromArgumentsSimple(argumentMap, ::ColorRGBa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.linearity
+    },
     ColorHSLaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHSLa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toHSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toHSLa().toRGBa().linearity
     },
     ColorHSVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHSVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toHSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toHSVa().toRGBa().linearity
     },
     ColorLABaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLABa(ref!!) }
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLABa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLABa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLABa().toRGBa().linearity
     },
     ColorLCHABaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLCHABa(ref!!) }
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLCHABa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLCHABa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLCHABa().toRGBa().linearity
     },
     ColorLCHUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLCHUVa(ref!!) }
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLCHUVa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLCHUVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLCHUVa().toRGBa().linearity
     },
     ColorLSHABaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLCHABa(ref!!).toLSHABa() }
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLCHABa(ref!!).toLSHABa() }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLSHABa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLCHABa().toLSHABa().toRGBa().linearity
     },
     ColorLSHUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLCHUVa(ref!!).toLSHUVa() }
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLCHUVa(ref!!).toLSHUVa() }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLSHUVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLCHUVa().toLSHUVa().toRGBa().linearity
     },
     ColorLUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { it.toLUVa(ref!!) }
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLUVa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLUVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLUVa().toRGBa().linearity
     },
     ColorXSLaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXSLa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toXSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSLa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toXSLa().toRGBa().linearity
     },
     ColorXSVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXSVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toXSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toXSVa().toRGBa().linearity
     },
     ColorXYZaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXYZa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toXYZa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXYZa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toXYZa().toRGBa().linearity
     },
     ColorYxyaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color) { ColorYxya.fromXYZa(it.toXYZa()) }
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { ColorYxya.fromXYZa(it.toXYZa()) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorYxya)
+        override val defaultLinearity: Linearity = ColorYxya.fromXYZa(DEFAULT_COLORRGBA.toXYZa()).toRGBa().linearity
     },
     ColorHPLUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHPLUVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toHPLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHPLUVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toHPLUVa().toRGBa().linearity
     },
     ColorHSLUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toHSLUVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toHSLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLUVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toHSLUVa().toRGBa().linearity
     },
     ColorOKHSLaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toOKHSLa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toOKHSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKHSLa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toOKHSLa().toRGBa().linearity
     },
     ColorOKHSVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toOKHSVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toOKHSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKHSVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toOKHSVa().toRGBa().linearity
     },
     ColorOKLABaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toOKLABa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toOKLABa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKLABa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toOKLABa().toRGBa().linearity
     },
     ColorOKLCHaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toOKLCHa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toOKLCHa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKLCHa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toOKLCHa().toRGBa().linearity
     },
     ColorXSLUVaConstructor {
-        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, ColorRGBa::toXSLUVa)
+        override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toXSLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSLUVa)
+        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toXSLUVa().toRGBa().linearity
     };
     // @formatter:on
 
@@ -176,6 +189,8 @@ internal enum class ColorRGBaDescriptor {
     abstract fun argumentsFromColor(color: Color, ref: ColorXYZa?): Array<String>
 
     abstract fun colorFromArguments(argumentMap: ArgumentMap): Color?
+
+    abstract val defaultLinearity: Linearity
 
     companion object {
         fun fromCallableDescriptor(targetDescriptor: CallableDescriptor): ColorRGBaDescriptor? {
@@ -207,8 +222,12 @@ internal enum class ColorRGBaDescriptor {
             }
         }
 
-        fun argumentsFromColorSimple(color: Color, conversionFunction: (ColorRGBa) -> ColorModel<*>): Array<String> {
-            val colorVector = conversionFunction(color.toColorRGBa()).toVector4()
+        fun argumentsFromColorSimple(
+            color: Color,
+            linearity: Linearity,
+            conversionFunction: (ColorRGBa) -> ColorModel<*>
+        ): Array<String> {
+            val colorVector = conversionFunction(color.toColorRGBa(linearity)).toVector4()
             return colorVector.toDoubleArray().formatNumbers()
         }
 
@@ -217,7 +236,7 @@ internal enum class ColorRGBaDescriptor {
         ): Color? = argumentMap.colorComponents.let {
             when (it.size) {
                 3 -> colorConstructor(it[0], it[1], it[2], 1.0)
-                4 -> colorConstructor(it[0], it[1], it[2], it[3])
+                4, 5 -> colorConstructor(it[0], it[1], it[2], it[3])
                 else -> null
             }?.toAWTColor()
         }
