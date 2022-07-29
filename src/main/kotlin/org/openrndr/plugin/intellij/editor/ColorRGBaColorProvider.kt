@@ -211,7 +211,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
         }
 
         fun CallableDescriptor.isColorModelPackage() = containingPackage()?.asString()?.let {
-            it == "org.openrndr.color" || it == "org.openrndr.extras.color.presets" || it == "org.openrndr.extra.color.spaces"
+            it == "org.openrndr.color" || it == "org.openrndr.extra.color.presets" || it == "org.openrndr.extra.color.spaces"
         } ?: false
 
         fun ValueParameterDescriptor.isAlpha(): Boolean {
@@ -251,7 +251,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 this[property.name] = (property.getter.call(ColorXYZa.Companion) as ColorXYZa).toAWTColor()
             }
             // There's no easy way to get the ColorRGBa extension properties in orx, we have to use Java reflection
-            val extensionColorsJavaClass = Class.forName("org.openrndr.extras.color.presets.ColorsKt")
+            val extensionColorsJavaClass = Class.forName("org.openrndr.extra.color.presets.ColorsKt")
             for (method in extensionColorsJavaClass.declaredMethods) {
                 // Every generated java method is prefixed with "get"
                 this[method.name.drop(3)] =

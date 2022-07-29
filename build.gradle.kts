@@ -17,9 +17,9 @@ repositories {
 // Keep in mind that test cases have their dependencies defined by the BasePlatformTestCase#getProjectDescriptor,
 // so they might not have the same versions as declared here. Inconsistent versions can cause failing tests.
 dependencies {
-    implementation("org.openrndr:openrndr-color:0.5.1-SNAPSHOT")
-    implementation("org.openrndr:openrndr-math:0.5.1-SNAPSHOT")
-    implementation("org.openrndr.extra:orx-color:0.5.1-SNAPSHOT")
+    implementation("org.openrndr:openrndr-color:0.4.1-rc.1")
+    implementation("org.openrndr:openrndr-math:0.4.1-rc.1")
+    implementation("org.openrndr.extra:orx-color:0.4.1-rc.1")
 }
 
 kotlin {
