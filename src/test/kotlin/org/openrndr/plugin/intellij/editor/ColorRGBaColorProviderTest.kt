@@ -171,11 +171,11 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
         // You can specify Maven local dependencies here as well
         private val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(
             { IdeaTestUtil.getMockJdk17() },
-            listOf("org.openrndr:openrndr-color:0.5.1-SNAPSHOT", "org.openrndr.extra:orx-color:0.5.1-SNAPSHOT")
+            listOf("org.openrndr:openrndr-color:0.4.1-rc.1", "org.openrndr.extra:orx-color:0.4.1-rc.1")
         )
 
         private const val IMPORTS = """import org.openrndr.color.*
-import org.openrndr.extras.color.presets.*
+import org.openrndr.extra.color.presets.*
 import org.openrndr.extra.color.spaces.*"""
 
         private const val IMPORTS_PREFIX = "$IMPORTS\nfun main() {"
