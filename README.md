@@ -1,6 +1,14 @@
 # OPENRNDR Plugin for IntelliJ
 
+<!-- Plugin description -->
+Support for the [OPENRNDR framework](https://github.com/openrndr/openrndr) in Kotlin.
+
 ## Features
+
+* ColorRGBa preview and editor in the editor gutter
+* ColorRGBa preview in the debugger view
+
+<!-- Plugin description end -->
 
 ### ColorRGBa preview in the editor
 
