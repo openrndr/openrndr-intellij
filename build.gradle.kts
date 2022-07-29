@@ -47,6 +47,8 @@ changelog {
     groups.set(emptyList())
 }
 
+val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community").absolutePath
+
 tasks {
     wrapper {
         gradleVersion = "7.5"
@@ -57,8 +59,10 @@ tasks {
         isScanForTestClasses = false
         // Only run tests from classes that end with "Test"
         include("**/*Test.class")
-        // TODO: Consider environment variable for this
-        systemProperties("idea.home.path" to File("$projectDir/../intellij-community").absolutePath)
+        systemProperties(
+            // This should always be an absolute path
+            "idea.home.path" to (System.getenv("INTELLIJ_SOURCES") ?: defaultIntellijSourcesPath)
+        )
     }
 
     buildSearchableOptions {
