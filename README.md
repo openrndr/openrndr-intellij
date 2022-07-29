@@ -8,12 +8,12 @@ Support for the [OPENRNDR framework](https://github.com/openrndr/openrndr) in Ko
 * ColorRGBa preview and editor in the editor gutter
 * ColorRGBa preview in the debugger view
 
-<!-- Plugin description end -->
-
 ### ColorRGBa preview in the editor
 
-<img width="300" alt="ColorRGBa preview in the editor" src="https://user-images.githubusercontent.com/6316604/181222738-796779d7-ab92-4e2c-b7f3-ec0d33638c5a.png">
-<img width="472" alt="ColorRGBa preview in the debugger" src="https://user-images.githubusercontent.com/6316604/181223088-30a40665-2f53-4068-b803-5f388be83232.png">
+<img width="463" alt="ColorRGBa preview in the editor" src="https://user-images.githubusercontent.com/6316604/181760872-87834eb6-71dd-4d01-9fdf-4fbf56528336.png">
+<img width="588" alt="ColorRGBa preview in the debugger" src="https://user-images.githubusercontent.com/6316604/181760916-774d53ee-4af1-49bd-b58b-012ed992eeff.png">
+
+<!-- Plugin description end -->
 
 [Using the color picker](https://user-images.githubusercontent.com/6316604/181222549-e1ab3f4b-28dc-4366-bf6b-6b7f2aa0fe28.webm)
 
