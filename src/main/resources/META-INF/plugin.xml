@@ -8,7 +8,7 @@
     <name>OPENRNDR</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="openrndr-plugin@vech.ro">Vechro</vendor>
+    <vendor url="https://openrndr.org/">OPENRNDR</vendor>
 
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
