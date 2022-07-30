@@ -210,7 +210,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
             }
         }
 
-        fun CallableDescriptor.isColorModelPackage() = containingPackage()?.asString()?.let {
+        fun DeclarationDescriptor.isColorModelPackage() = containingPackage()?.asString()?.let {
             it == "org.openrndr.color" || it == "org.openrndr.extra.color.presets" || it == "org.openrndr.extra.color.spaces"
         } ?: false
 

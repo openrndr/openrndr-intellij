@@ -23,5 +23,8 @@
         <colorProvider implementation="org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider"/>
         <debugger.compoundRendererProvider
                 implementation="org.openrndr.plugin.intellij.debugger.ColorRGBaRendererProvider" order="first"/>
+        <completion.contributor
+                implementationClass="org.openrndr.plugin.intellij.completion.ColorRGBaCompletionContributor"
+                language="kotlin" order="first"/>
     </extensions>
 </idea-plugin>

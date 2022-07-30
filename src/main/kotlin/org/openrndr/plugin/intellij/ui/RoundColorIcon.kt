@@ -1,11 +1,12 @@
 package org.openrndr.plugin.intellij.ui
 
-import com.intellij.util.ui.JBScalableIcon
+import com.intellij.util.ui.JBCachingScalableIcon
 import java.awt.*
 import kotlin.math.ceil
 import kotlin.math.floor
 
-data class RoundColorIcon(val size: Int, val colorSize: Int, val color: Color) : JBScalableIcon() {
+data class RoundColorIcon(val size: Int, val colorSize: Int, val color: Color) :
+    JBCachingScalableIcon<RoundColorIcon>() {
     private val sizeScaled = scaleVal(size.toDouble())
     private val colorSizeScaled = scaleVal(colorSize.toDouble())
 
@@ -22,6 +23,6 @@ data class RoundColorIcon(val size: Int, val colorSize: Int, val color: Color) :
     }
 
     override fun getIconWidth(): Int = ceil(sizeScaled).toInt()
-
     override fun getIconHeight(): Int = ceil(sizeScaled).toInt()
+    override fun copy(): RoundColorIcon = this.copy()
 }
