@@ -11,8 +11,10 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToCall
+import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
 import org.jetbrains.kotlin.idea.references.SyntheticPropertyAccessorReference
 import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.name.parentOrNull
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfTypes2
@@ -210,9 +212,13 @@ class ColorRGBaColorProvider : ElementColorProvider {
             }
         }
 
-        fun DeclarationDescriptor.isColorModelPackage() = containingPackage()?.asString()?.let {
+        fun DeclarationDescriptor.isColorModelPackage() = containingPackage()?.asString().let {
             it == "org.openrndr.color" || it == "org.openrndr.extra.color.presets" || it == "org.openrndr.extra.color.spaces"
-        } ?: false
+        }
+
+        fun ValueDescriptor.isColorModelPackage() = type.fqName?.parentOrNull()?.asString().let {
+            it == "org.openrndr.color" || it == "org.openrndr.extra.color.presets" || it == "org.openrndr.extra.color.spaces"
+        }
 
         fun ValueParameterDescriptor.isAlpha(): Boolean {
             return containingDeclaration.getImportableDescriptor().fqNameSafe.asString().let {
