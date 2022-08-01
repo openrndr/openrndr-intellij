@@ -50,7 +50,7 @@ class ColorRGBaRendererProvider : CompoundRendererProvider() {
                     ) as? DoubleValue
                     value?.doubleValue()?.toFloat() ?: return@r null
                 }
-                JBUIScale.scaleIcon(RoundColorIcon(16, 12, Color(r, g, b, a)))
+                JBUIScale.scaleIcon(RoundColorIcon(Color(r, g, b, a), 16, 12))
             } catch (e: EvaluateException) {
                 LOG.error(e)
                 null
