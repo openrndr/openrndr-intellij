@@ -1,24 +1,29 @@
 package org.openrndr.plugin.intellij.ui
 
+import com.intellij.openapi.ui.GraphicsConfig
 import com.intellij.util.ui.JBCachingScalableIcon
 import java.awt.*
 import kotlin.math.ceil
-import kotlin.math.floor
 
-data class RoundColorIcon(val size: Int, val colorSize: Int, val color: Color) :
+/**
+ * @param color color used for drawing the icon
+ * @param size icon size with padding
+ * @param colorSize inner size of the icon i.e. the size of the area where the color is drawn within the icon
+ */
+data class RoundColorIcon(val color: Color, val size: Int, val colorSize: Int) :
     JBCachingScalableIcon<RoundColorIcon>() {
     private val sizeScaled = scaleVal(size.toDouble())
     private val colorSizeScaled = scaleVal(colorSize.toDouble())
+    private val arcDiameter = (colorSizeScaled / 2.0).toInt()
 
     override fun paintIcon(component: Component, graphics: Graphics, x: Int, y: Int) {
-        val offset = floor((sizeScaled - colorSizeScaled) / 2.0).toInt()
-        val adjustedColorSize = ceil(colorSizeScaled).toInt()
+        val offset = ((sizeScaled - colorSizeScaled) / 2.0).toInt()
+        val innerSize = ceil(colorSizeScaled).toInt()
         with(graphics as Graphics2D) {
-            color = this@RoundColorIcon.color
-            val hint = getRenderingHint(RenderingHints.KEY_ANTIALIASING)
-            setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            fillOval(x + offset, y + offset, adjustedColorSize, adjustedColorSize)
-            setRenderingHint(RenderingHints.KEY_ANTIALIASING, hint)
+            GraphicsConfig(this).setupAAPainting().also {
+                color = this@RoundColorIcon.color
+                fillRoundRect(x + offset, y + offset, innerSize, innerSize, arcDiameter, arcDiameter)
+            }.restore()
         }
     }
 
