@@ -12,13 +12,13 @@ import org.openrndr.color.Linearity
 internal sealed class ConstantValueContainer<out T> {
     class Constant<out T>(val value: ConstantValue<T>) : ConstantValueContainer<T>()
     class WhitePoint(val value: ColorXYZa) : ConstantValueContainer<ColorXYZa>()
-    companion object DefaultValue {
+    companion object {
         val REF = WhitePoint(ColorXYZa.NEUTRAL)
         val ALPHA = Constant(DoubleValue(1.0))
         val LINEARITY = Constant(
             EnumValue(
-                ClassId(FqName("org.openrndr.color"), FqName("Linearity"), false),
-                // Default value for linearity in ColorRGBa
+                ClassId.topLevel(FqName("org.openrndr.color.Linearity")),
+                // Default value for Linearity in ColorRGBa
                 Name.identifier(Linearity.UNKNOWN.name)
             )
         )
