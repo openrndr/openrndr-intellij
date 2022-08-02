@@ -185,16 +185,27 @@ internal enum class ColorRGBaDescriptor {
     /**
      * @param ref Only present for color models where the reference color is used in the constructor,
      * regardless of whether the user specifies it or not.
+     * @return new arguments (in canonical order) to be used to replace the old arguments
      */
     abstract fun argumentsFromColor(color: Color, ref: ColorXYZa?): Array<String>
 
+    /** The resulting Color from an [ArgumentMap]. */
     abstract fun colorFromArguments(argumentMap: ArgumentMap): Color?
 
+    /**
+     * Or in other words, of what [Linearity] ColorRGBa do you get when you call [ColorModel.toRGBa]
+     * on the given ColorModel implementation? This is used on the assumption that converting the
+     * resulting ColorRGBa with the same linearity back to the previous ColorModel implementation
+     * will yield a practically identical color (floating-point accuracy errors notwithstanding).
+     * Because one can observe that the Linearity of the ColorRGBa used to convert to a different
+     * ColorModel can have an effect on the resulting color, e.g. [ColorHSLa.fromRGBa] calls
+     * [ColorRGBa.toSRGB] in the function body.
+     */
     abstract val defaultLinearity: Linearity
 
     companion object {
         fun fromCallableDescriptor(targetDescriptor: CallableDescriptor): ColorRGBaDescriptor? {
-            return when (targetDescriptor.getImportableDescriptor().name.asString()) {
+            return when (targetDescriptor.getImportableDescriptor().name.identifier) {
                 "fromHex" -> FromHex
                 "rgb" -> RGB
                 "ColorRGBa" -> ColorRGBaConstructor
@@ -223,9 +234,7 @@ internal enum class ColorRGBaDescriptor {
         }
 
         fun argumentsFromColorSimple(
-            color: Color,
-            linearity: Linearity,
-            conversionFunction: (ColorRGBa) -> ColorModel<*>
+            color: Color, linearity: Linearity, conversionFunction: (ColorRGBa) -> ColorModel<*>
         ): Array<String> {
             val colorVector = conversionFunction(color.toColorRGBa(linearity)).toVector4()
             return colorVector.toDoubleArray().formatNumbers()

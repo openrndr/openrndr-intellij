@@ -20,16 +20,16 @@ import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfTypes2
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
-import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
 import org.jetbrains.kotlin.resolve.calls.model.*
 import org.jetbrains.kotlin.resolve.calls.tower.NewAbstractResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getCall
 import org.jetbrains.kotlin.resolve.calls.util.getResolvedCall
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
-import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
 import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor.Companion.colorComponents
+import org.openrndr.plugin.intellij.editor.ConstantValueContainer.Companion.getKnownDefaultValueIfPossible
+import org.openrndr.plugin.intellij.editor.ConstantValueContainer.Companion.isRef
 import java.awt.Color
 import kotlin.reflect.full.memberProperties
 
@@ -61,13 +61,14 @@ class ColorRGBaColorProvider : ElementColorProvider {
 
     override fun setColorTo(element: PsiElement, color: Color) {
         if (element !is LeafPsiElement) return
-        val document = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
+        val project = element.project
+        val document = PsiDocumentManager.getInstance(project).getDocument(element.containingFile)
         val command = Runnable r@{
-            val outerCallExpression =
+            val outerExpression =
                 element.getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression
-            val outerCallContext = outerCallExpression?.analyze() ?: return@r
-            val call = outerCallExpression.getCall(outerCallContext)
-            val resolvedCall = call?.getResolvedCall(outerCallContext) as? NewAbstractResolvedCall ?: return@r
+            val outerExpressionContext = outerExpression?.analyze() ?: return@r
+            val call = outerExpression.getCall(outerExpressionContext)
+            val resolvedCall = call?.getResolvedCall(outerExpressionContext) as? NewAbstractResolvedCall ?: return@r
 
             val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(resolvedCall.resultingDescriptor)
             val psiFactory = KtPsiFactory(element)
@@ -95,7 +96,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
                  * control over the color picker behavior.
                  */
                 val hexArgument = ColorRGBaDescriptor.FromHex.argumentsFromColor(color, null).firstOrNull() ?: return@r
-                (outerCallExpression as? KtDotQualifiedExpression)?.selectorExpression?.replace(
+                (outerExpression as? KtDotQualifiedExpression)?.selectorExpression?.replace(
                     psiFactory.createExpression("fromHex($hexArgument)")
                 )
             } else {
@@ -103,59 +104,50 @@ class ColorRGBaColorProvider : ElementColorProvider {
                  * This will always be null for color models which don't implement [ReferenceWhitePoint]
                  * and always non-null for color models that do.
                  */
-                val argumentMap = resolvedCall.computeValueArguments(outerCallContext)
+                val argumentMap = resolvedCall.computeValueArguments(outerExpressionContext)
                 val ref =
                     argumentMap?.firstNotNullOfOrNull { it.takeIf { (p, _) -> p.isRef() }?.value } as? ConstantValueContainer.WhitePoint
                 val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref?.value)
-                outerCallExpression.getChildOfType<KtValueArgumentList>()?.let {
+                outerExpression.getChildOfType<KtValueArgumentList>()?.let {
                     it.replace(it.constructReplacement(resolvedCall.valueArguments, colorArguments))
-                } ?: outerCallExpression.getChildOfType<KtCallExpression>()?.let {
-                    // This handles the scenario after ColorRGBa.RED has been replaced by ColorRGBa.fromHex(...)
-                    // without closing the color picker and picking a new color. I think IntelliJ has not yet recognized
-                    // the PSI structure changes and is not aware we now have a KtValueArgumentList following the
-                    // KtCallExpression.
-                    // TODO: Clean up this hack
+                } ?: outerExpression.getChildOfType<KtCallExpression>()?.let {
+                    // This handles the scenario after ColorRGBa.RED has been replaced by ColorRGBa.fromHex(...) without
+                    // closing the color picker and picking a new color. I think IntelliJ has not yet recognized the PSI
+                    // structure changes and is unaware we now have a KtValueArgumentList following the KtCallExpression.
                     it.replace(psiFactory.createExpression("fromHex(${colorArguments.firstOrNull() ?: return@r})"))
                 }
             }
         }
         // TODO: Should use message bundle for command name
-        CommandProcessor.getInstance().executeCommand(element.project, command, "Change Color", null, document)
+        CommandProcessor.getInstance().executeCommand(project, command, "Change Color", null, document)
     }
 
     internal companion object {
         /**
          * Computes argument constants if it can, returns null otherwise.
          *
-         * @return Either a mapping of parameters to argument constants or null if any of the argument
+         * @return Either a mapping of all parameters to argument constants or null if any of the argument
          * constants cannot be computed.
          */
         fun ResolvedCall<out CallableDescriptor>.computeValueArguments(bindingContext: BindingContext): ArgumentMap? {
             return buildMap {
                 for ((parameter, argument) in valueArguments) {
                     val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
-                        ?: if (parameter.hasDefaultValue()) {
-                            when {
-                                parameter.isAlpha() -> set(parameter, ConstantValueContainer.ALPHA)
-                                parameter.isRef() -> set(parameter, ConstantValueContainer.REF)
-                                parameter.isLinearity() -> set(parameter, ConstantValueContainer.LINEARITY)
-                                else -> return null
-                            }
-                            continue
-                        } else {
-                            return null
-                        }
+                    if (expression == null) {
+                        this[parameter] = parameter.getKnownDefaultValueIfPossible() ?: return null
+                        continue
+                    }
                     if (parameter.isRef()) {
                         val refContext = expression.analyze()
                         val refResolvedCall = expression.resolveToCall() ?: return null
-                        val refColor =
-                            staticWhitePointMap[refResolvedCall.resultingDescriptor.getImportableDescriptor().name.identifier]
-                                ?: refResolvedCall.computeValueArguments(refContext)?.computeWhitePoint() ?: return null
-                        set(parameter, ConstantValueContainer.WhitePoint(refColor))
+                        val importableDescriptor = refResolvedCall.resultingDescriptor.getImportableDescriptor()
+                        val refColor = staticWhitePointMap[importableDescriptor.name.identifier]
+                            ?: refResolvedCall.computeValueArguments(refContext)?.computeWhitePoint() ?: return null
+                        this[parameter] = ConstantValueContainer.WhitePoint(refColor)
                     } else {
                         val constant = ConstantExpressionEvaluator.getConstant(expression, bindingContext)
                             ?.toConstantValue(parameter.type) ?: return null
-                        set(parameter, ConstantValueContainer.Constant(constant))
+                        this[parameter] = ConstantValueContainer.Constant(constant)
                     }
                 }
             }
@@ -172,8 +164,8 @@ class ColorRGBaColorProvider : ElementColorProvider {
         /**
          * Non-destructively builds and returns a new [KtValueArgumentList].
          *
-         * @param replacementArguments Replacement arguments which are
-         * retrieved by parameter index and converted into expressions
+         * @param replacementArguments replacement arguments which are
+         * retrieved by parameter index and converted into [KtExpression]s
          */
         fun KtValueArgumentList.constructReplacement(
             resolvedArgumentMap: Map<ValueParameterDescriptor, ResolvedValueArgument>,
@@ -212,36 +204,28 @@ class ColorRGBaColorProvider : ElementColorProvider {
             }
         }
 
-        fun DeclarationDescriptor.isColorModelPackage() = containingPackage()?.asString().let {
-            it == "org.openrndr.color" || it == "org.openrndr.extra.color.presets" || it == "org.openrndr.extra.color.spaces"
+        private fun isColorModelPackage(s: String?): Boolean =
+            s == "org.openrndr.color" || s == "org.openrndr.extra.color.presets" || s == "org.openrndr.extra.color.spaces"
+
+        fun DeclarationDescriptor.isColorModelPackage(): Boolean =
+            containingPackage()?.asString().let(Companion::isColorModelPackage)
+
+        fun ValueDescriptor.isColorModelPackage(): Boolean =
+            type.fqName?.parentOrNull()?.asString().let(Companion::isColorModelPackage)
+
+        fun ColorModel<*>.toAWTColor(): Color = toRGBa().run {
+            Color(
+                r.toFloat().coerceIn(0f, 1f),
+                g.toFloat().coerceIn(0f, 1f),
+                b.toFloat().coerceIn(0f, 1f),
+                alpha.toFloat().coerceIn(0f, 1f)
+            )
         }
 
-        fun ValueDescriptor.isColorModelPackage() = type.fqName?.parentOrNull()?.asString().let {
-            it == "org.openrndr.color" || it == "org.openrndr.extra.color.presets" || it == "org.openrndr.extra.color.spaces"
+        fun Color.toColorRGBa(linearity: Linearity = Linearity.UNKNOWN): ColorRGBa {
+            val (r, g, b, a) = getComponents(null)
+            return ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
         }
-
-        fun ValueParameterDescriptor.isAlpha(): Boolean {
-            return containingDeclaration.getImportableDescriptor().fqNameSafe.asString().let {
-                name.identifier == "alpha" || name.identifier == "a" && (it == "org.openrndr.color.rgb" || it == "org.openrndr.color.hsl" || it == "org.openrndr.color.hsv")
-            }
-        }
-
-        fun ValueParameterDescriptor.isRef(): Boolean = name.identifier == "ref"
-
-        fun ValueParameterDescriptor.isLinearity(): Boolean = name.identifier == "linearity"
-
-        fun ColorModel<*>.toAWTColor(): Color = toRGBa().clamped().run {
-            Color(r.toFloat(), g.toFloat(), b.toFloat(), alpha.toFloat())
-        }
-
-        private fun ColorRGBa.clamped(): ColorRGBa = (0.0..1.0).let {
-            copy(r.coerceIn(it), g.coerceIn(it), b.coerceIn(it), alpha.coerceIn(it))
-        }
-
-        fun Color.toColorRGBa(linearity: Linearity = Linearity.UNKNOWN): ColorRGBa =
-            getComponents(null).let { (r, g, b, a) ->
-                ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
-            }
 
         /**
          * Uses a combination of Kotlin and Java reflection to create a String-to-Color mapping
