@@ -1,5 +1,7 @@
 package org.openrndr.plugin.intellij.editor
 
+import com.jetbrains.rd.util.ThreadLocal
+import com.jetbrains.rd.util.threadLocalWithInitial
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.resolve.constants.DoubleValue
@@ -12,7 +14,8 @@ import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toAW
 import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toColorRGBa
 import java.awt.Color
 import java.text.DecimalFormat
-import java.text.NumberFormat
+import java.text.DecimalFormatSymbols
+import java.util.*
 
 internal typealias ArgumentMap = Map<ValueParameterDescriptor, ConstantValueContainer<*>>
 
@@ -272,13 +275,13 @@ internal enum class ColorRGBaDescriptor {
             }?.toAWTColor()
         }
 
-        private val numberFormatter: NumberFormat = DecimalFormat.getNumberInstance().apply {
-            minimumFractionDigits = 1
-            maximumFractionDigits = 3
+        /** [ThreadLocal]-wrapped [DecimalFormat], otherwise it wouldn't be thread-safe. */
+        private val decimalFormat: ThreadLocal<DecimalFormat> = threadLocalWithInitial {
+            DecimalFormat("0.0##", DecimalFormatSymbols(Locale.US))
         }
 
         private fun DoubleArray.formatNumbers() = Array<String>(size) {
-            numberFormatter.format(this[it])
+            decimalFormat.get().format(this[it])
         }
 
         /**
