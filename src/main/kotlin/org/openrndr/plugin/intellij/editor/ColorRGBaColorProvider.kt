@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.resolve.calls.util.getResolvedCall
 import org.jetbrains.kotlin.resolve.constants.evaluate.ConstantExpressionEvaluator
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
+import org.openrndr.plugin.intellij.OpenrndrBundle
 import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor.Companion.colorComponents
 import org.openrndr.plugin.intellij.editor.ConstantValueContainer.Companion.getKnownDefaultValueIfPossible
 import org.openrndr.plugin.intellij.editor.ConstantValueContainer.Companion.isRef
@@ -118,8 +119,8 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 }
             }
         }
-        // TODO: Should use message bundle for command name
-        CommandProcessor.getInstance().executeCommand(project, command, "Change Color", null, document)
+        CommandProcessor.getInstance()
+            .executeCommand(project, command, OpenrndrBundle.message("change.color.command.text"), null, document)
     }
 
     internal companion object {
