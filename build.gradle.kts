@@ -25,6 +25,18 @@ dependencies {
     implementation("org.openrndr.extra:orx-color:0.4.1-rc.1")
 }
 
+// OPENRNDR/ORX includes *a lot* of transitive dependencies that are completely unnecessary to us
+configurations.implementation {
+    exclude(group = "org.jetbrains.kotlin")
+    exclude(group = "org.jetbrains.kotlinx")
+    exclude(group = "io.github.microutils")
+    exclude(group = "org.openrndr", module = "openrndr-application")
+    exclude(group = "org.openrndr", module = "openrndr-draw")
+    exclude(group = "org.openrndr", module = "openrndr-filter")
+    exclude(group = "org.openrndr.extra", module = "orx-parameters")
+    exclude(group = "org.openrndr.extra", module = "orx-shader-phrases")
+}
+
 kotlin {
     jvmToolchain {
         languageVersion.set(JavaLanguageVersion.of(11))
