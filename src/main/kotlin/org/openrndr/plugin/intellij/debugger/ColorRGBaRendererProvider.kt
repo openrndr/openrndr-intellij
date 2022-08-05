@@ -18,7 +18,11 @@ import java.util.function.Function
 
 private val LOG = logger<ColorRGBaRendererProvider>()
 
-class ColorRGBaRendererProvider : CompoundRendererProvider() {
+object ColorRGBaRendererProvider : CompoundRendererProvider() {
+    private const val PACKAGE_NAME = "org.openrndr.color"
+    private const val COLOR_MODEL_NAME = "$PACKAGE_NAME.ColorModel"
+    private const val COLORRGBA_NAME = "$PACKAGE_NAME.ColorRGBa"
+
     override fun getName(): String = "ColorRGBa"
 
     /**
@@ -28,13 +32,13 @@ class ColorRGBaRendererProvider : CompoundRendererProvider() {
      * after KotlinClassRendererProvider which is applicable for ColorRGBa.
      */
     override fun getIconRenderer(): ValueIconRenderer =
-        ValueIconRenderer r@{ descriptor: ValueDescriptor, evaluationContext: EvaluationContext, listener: DescriptorLabelListener ->
+        ValueIconRenderer r@{ descriptor: ValueDescriptor, evaluationContext: EvaluationContext, _: DescriptorLabelListener ->
             var objectReference = (descriptor.value as? ObjectReference) ?: return@r null
             var referenceType = objectReference.referenceType()
             val debugProcess = evaluationContext.debugProcess
             return@r try {
                 // If it isn't ColorRGBa, we'll need to convert it to one
-                if (referenceType.name() != CLASS_NAME) {
+                if (referenceType.name() != COLORRGBA_NAME) {
                     val toRGBa = DebuggerUtils.findMethod(referenceType, "toRGBa", null)
                         ?: return@r null.apply { LOG.error("Failed to find method \"toRGBa\" for $objectReference") }
                     objectReference = debugProcess.invokeMethod(
@@ -65,11 +69,5 @@ class ColorRGBaRendererProvider : CompoundRendererProvider() {
                     && StringUtil.getPackageName(type.name()) == PACKAGE_NAME
                     && type.interfaces().any { it.name() == COLOR_MODEL_NAME }
         )
-    }
-
-    companion object {
-        private const val PACKAGE_NAME = "org.openrndr.color"
-        private const val COLOR_MODEL_NAME = "$PACKAGE_NAME.ColorModel"
-        private const val CLASS_NAME = "$PACKAGE_NAME.ColorRGBa"
     }
 }

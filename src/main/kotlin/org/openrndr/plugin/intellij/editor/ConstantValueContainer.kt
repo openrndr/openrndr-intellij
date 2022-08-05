@@ -40,7 +40,7 @@ internal sealed class ConstantValueContainer<out T> {
 
         fun ValueParameterDescriptor.isLinearity(): Boolean = name.identifier == "linearity"
 
-        fun ValueParameterDescriptor.getKnownDefaultValueIfPossible(): ConstantValueContainer<*>? {
+        fun ValueParameterDescriptor.getDefaultValueIfKnown(): ConstantValueContainer<*>? {
             if (!hasDefaultValue()) return null
             return when {
                 isAlpha() -> ALPHA
