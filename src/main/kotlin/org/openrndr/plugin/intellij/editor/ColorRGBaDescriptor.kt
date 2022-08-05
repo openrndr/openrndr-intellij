@@ -10,8 +10,8 @@ import org.jetbrains.kotlin.resolve.constants.StringValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toColorRGBa
+import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.toAWTColor
+import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.toColorRGBa
 import java.awt.Color
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -248,7 +248,7 @@ internal enum class ColorRGBaDescriptor {
         ): Color? = argumentMap.colorComponents.let {
             when (it.size) {
                 3 -> colorConstructor(it[0], it[1], it[2], 1.0)
-                4, 5 -> colorConstructor(it[0], it[1], it[2], it[3])
+                4 -> colorConstructor(it[0], it[1], it[2], it[3])
                 else -> null
             }?.toAWTColor()
         }

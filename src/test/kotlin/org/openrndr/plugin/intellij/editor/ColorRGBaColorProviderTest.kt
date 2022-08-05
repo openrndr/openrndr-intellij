@@ -9,7 +9,7 @@ import com.intellij.util.ui.ColorsIcon
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.openrndr.color.*
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
+import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.toAWTColor
 import java.awt.Color
 
 class ColorRGBaColorProviderTest : BasePlatformTestCase() {
