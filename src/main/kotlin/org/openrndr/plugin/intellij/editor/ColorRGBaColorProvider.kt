@@ -255,25 +255,23 @@ object ColorRGBaColorProvider : ElementColorProvider {
     }
 
     // @formatter:off
-        private val COLOR_PROVIDER_PATTERN: PsiElementPattern.Capture<PsiElement> = psiElement(KtTokens.IDENTIFIER)
-            .withParent(
-                or(
-                    /** Matches something like **ColorRGBa**.RED */
-                    psiElement(KtNameReferenceExpression::class.java)
-                        // This disambiguates from import statements which are also dot qualified expressions
-                        .withReference(SyntheticPropertyAccessorReference::class.java)
-                        .beforeLeaf(psiElement(KtTokens.DOT)
-                            .beforeLeaf(psiElement(KtTokens.IDENTIFIER)
-                                .beforeLeaf(not(psiElement(KtTokens.LPAR)))
-                            )
-                        )
-                        .withParent(KtDotQualifiedExpression::class.java),
-                    /** Matches something like **ColorRGBa**(...) or ColorRGBa.**fromHex**(...) */
-                    psiElement(KtNameReferenceExpression::class.java)
-                        .withReference(SyntheticPropertyAccessorReference::class.java)
-                        .beforeLeaf(psiElement(KtTokens.LPAR))
-                        .withParent(psiElement(KtCallExpression::class.java))
-                )
+    private val COLOR_PROVIDER_PATTERN: PsiElementPattern.Capture<PsiElement> = psiElement(KtTokens.IDENTIFIER)
+        .withParent(
+            or(
+                /** Matches something like **ColorRGBa**.RED */
+                psiElement(KtNameReferenceExpression::class.java)
+                    // This disambiguates from import statements which are also dot qualified expressions
+                    .withReference(SyntheticPropertyAccessorReference::class.java)
+                    .beforeLeaf(psiElement(KtTokens.DOT)
+                        .beforeLeaf(psiElement(KtTokens.IDENTIFIER)
+                            .beforeLeaf(not(psiElement(KtTokens.LPAR)))))
+                    .withParent(KtDotQualifiedExpression::class.java),
+                /** Matches something like **ColorRGBa**(...) or ColorRGBa.**fromHex**(...) */
+                psiElement(KtNameReferenceExpression::class.java)
+                    .withReference(SyntheticPropertyAccessorReference::class.java)
+                    .beforeLeaf(psiElement(KtTokens.LPAR))
+                    .withParent(psiElement(KtCallExpression::class.java))
             )
-        // @formatter:on
+        )
+    // @formatter:on
 }

@@ -25,6 +25,6 @@
                 implementation="org.openrndr.plugin.intellij.debugger.ColorRGBaRendererProvider" order="first"/>
         <completion.contributor
                 implementationClass="org.openrndr.plugin.intellij.completion.ColorRGBaCompletionContributor"
-                language="kotlin" order="first"/>
+                language="kotlin" order="first, before KotlinCompletionContributor"/>
     </extensions>
 </idea-plugin>
