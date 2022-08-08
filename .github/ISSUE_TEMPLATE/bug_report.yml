@@ -1,0 +1,36 @@
+name: "Bug report"
+description: Report an issue or possible bug
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for taking the time to file a bug report! Please fill out this form as completely as possible.
+  - type: dropdown
+    attributes:
+      label: Operating system
+      multiple: false
+      options:
+        - Linux
+        - macOS
+        - Windows
+  - type: input
+    attributes:
+      label: OPENRNDR version used in your project
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: OPENRNDR backend used in your project
+      multiple: false
+      options:
+        - Kotlin/JVM
+        - Kotlin/JS
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is, optionally including a screenshot and/or a stacktrace.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce the bug
