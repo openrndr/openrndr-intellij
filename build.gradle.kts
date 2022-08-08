@@ -39,7 +39,7 @@ configurations.implementation {
 
 kotlin {
     jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
@@ -63,7 +63,7 @@ val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community
 
 tasks {
     wrapper {
-        gradleVersion = "7.5"
+        gradleVersion = "7.5.1"
     }
 
     // https://youtrack.jetbrains.com/issue/IDEA-278926#focus=Comments-27-5561012.0-0
