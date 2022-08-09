@@ -1,13 +1,12 @@
 package org.openrndr.plugin.intellij.editor
 
-import com.jetbrains.rd.util.ThreadLocal
-import com.jetbrains.rd.util.threadLocalWithInitial
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.resolve.constants.DoubleValue
 import org.jetbrains.kotlin.resolve.constants.IntValue
 import org.jetbrains.kotlin.resolve.constants.StringValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
+import org.jetbrains.kotlin.utils.threadLocal
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
 import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.toAWTColor
@@ -276,12 +275,12 @@ internal enum class ColorRGBaDescriptor {
         }
 
         /** [ThreadLocal]-wrapped [DecimalFormat], otherwise it wouldn't be thread-safe. */
-        private val decimalFormat: ThreadLocal<DecimalFormat> = threadLocalWithInitial {
+        private val decimalFormat by threadLocal {
             DecimalFormat("0.0##", DecimalFormatSymbols(Locale.US))
         }
 
         private fun DoubleArray.formatNumbers() = Array<String>(size) {
-            decimalFormat.get().format(this[it])
+            decimalFormat.format(this[it])
         }
 
         /**
