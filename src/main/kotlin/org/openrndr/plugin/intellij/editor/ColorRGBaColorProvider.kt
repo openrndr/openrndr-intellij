@@ -32,9 +32,9 @@ import org.openrndr.plugin.intellij.editor.ConstantValueContainer.Companion.isRe
 import java.awt.Color
 import kotlin.reflect.full.memberProperties
 
-private val LOG = logger<ColorRGBaColorProvider>()
-
 object ColorRGBaColorProvider : ElementColorProvider {
+    private val LOG = logger<ColorRGBaColorProvider>()
+
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
         if (!COLOR_PROVIDER_PATTERN.accepts(element)) return null

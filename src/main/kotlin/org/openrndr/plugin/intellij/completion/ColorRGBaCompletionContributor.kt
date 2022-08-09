@@ -3,7 +3,10 @@ package org.openrndr.plugin.intellij.completion
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
-import com.intellij.codeInsight.lookup.*
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.codeInsight.lookup.LookupElementDecorator
+import com.intellij.codeInsight.lookup.LookupElementPresentation
+import com.intellij.codeInsight.lookup.LookupElementRenderer
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.scale.JBUIScale
 import org.jetbrains.kotlin.descriptors.ValueDescriptor
