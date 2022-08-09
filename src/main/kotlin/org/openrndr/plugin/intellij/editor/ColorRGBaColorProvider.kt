@@ -127,21 +127,19 @@ object ColorRGBaColorProvider : ElementColorProvider {
         buildMap {
             for ((parameter, argument) in valueArguments) {
                 val expression = (argument as? ExpressionValueArgument)?.valueArgument?.getArgumentExpression()
-                if (expression == null) {
-                    this[parameter] = parameter.getDefaultValueIfKnown() ?: return null
-                    continue
-                }
-                if (parameter.isRef()) {
+                this[parameter] = if (expression == null) {
+                    parameter.getDefaultValueIfKnown() ?: return null
+                } else if (parameter.isRef()) {
                     val refContext = expression.analyze()
-                    val refResolvedCall = expression.resolveToCall() ?: return null
+                    val refResolvedCall = expression.getResolvedCall(refContext) ?: return null
                     val importableDescriptor = refResolvedCall.resultingDescriptor.getImportableDescriptor()
                     val refColor = staticWhitePointMap[importableDescriptor.name.identifier]
                         ?: refResolvedCall.computeValueArguments(refContext)?.computeWhitePoint() ?: return null
-                    this[parameter] = ConstantValueContainer.WhitePoint(refColor)
+                    ConstantValueContainer.WhitePoint(refColor)
                 } else {
                     val constant = ConstantExpressionEvaluator.getConstant(expression, bindingContext)
                         ?.toConstantValue(parameter.type) ?: return null
-                    this[parameter] = ConstantValueContainer.Constant(constant)
+                    ConstantValueContainer.Constant(constant)
                 }
             }
         }
