@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.name.parentOrNull
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfTypes2
-import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.model.*
 import org.jetbrains.kotlin.resolve.calls.tower.NewAbstractResolvedCall
@@ -40,22 +39,17 @@ object ColorRGBaColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
         if (!COLOR_PROVIDER_PATTERN.accepts(element)) return null
-        val outerExpression = element.getStrictParentOfType<KtDotQualifiedExpression>()
-            ?: element.getStrictParentOfType<KtNameReferenceExpression>() ?: return null
-        val outerExpressionContext = outerExpression.analyze()
-        // TODO: orx-color references always fail resolveToCall?
-        val resolvedCall =
-            outerExpression.getResolvedCall(outerExpressionContext) as? NewAbstractResolvedCall ?: return null
-        val descriptor = resolvedCall.resultingDescriptor
+        val outerExpression = element.getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression
+        val outerExpressionContext = outerExpression?.analyze() ?: return null
+        val resolvedCall = outerExpression.getResolvedCall(outerExpressionContext) as? NewAbstractResolvedCall
+        val descriptor = resolvedCall?.resultingDescriptor
 
-        if (!descriptor.isColorModelPackage()) return null
-
+        if (descriptor?.isColorModelPackage() != true) return null
         if (resolvedCall.kotlinCall?.callKind == KotlinCallKind.VARIABLE) {
             return staticColorMap[descriptor.getImportableDescriptor().name.identifier]
         }
 
         val argumentMap = resolvedCall.computeValueArguments(outerExpressionContext) ?: return null
-
         val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor)
         return colorRGBaDescriptor?.colorFromArguments(argumentMap)
     }
@@ -184,7 +178,8 @@ object ColorRGBaColorProvider : ElementColorProvider {
                             appendFixedText(" = ")
                         }
                         appendExpression(
-                            newArgument?.let(psiFactory::createExpression) ?: valueArgument.getArgumentExpression()
+                            newArgument?.let(psiFactory::createExpressionIfPossible)
+                                ?: valueArgument.getArgumentExpression()
                         )
                     }
                     is DefaultValueArgument -> {
@@ -220,9 +215,8 @@ object ColorRGBaColorProvider : ElementColorProvider {
         )
     }
 
-    fun Color.toColorRGBa(linearity: Linearity = Linearity.UNKNOWN): ColorRGBa {
-        val (r, g, b, a) = getComponents(null)
-        return ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
+    fun Color.toColorRGBa(linearity: Linearity = Linearity.UNKNOWN) = getComponents(null).let { (r, g, b, a) ->
+        ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
     }
 
     /**

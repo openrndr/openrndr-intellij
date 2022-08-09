@@ -1,28 +1,25 @@
 import org.jetbrains.changelog.markdownToHTML
 
-fun properties(key: String) = project.findProperty(key).toString()
-
+@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     java
-    kotlin("jvm") version "1.7.10"
-    id("org.jetbrains.intellij") version "1.8.0"
-    id("org.jetbrains.changelog") version "1.3.1"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.intellij)
+    alias(libs.plugins.changelog)
 }
 
 group = "org.openrndr.plugin.intellij"
-version = properties("pluginVersion")
+version = "1.0.0"
 
 repositories {
     mavenCentral()
     mavenLocal()
 }
 
-// Keep in mind that test cases have their dependencies defined by the BasePlatformTestCase#getProjectDescriptor,
-// so they might not have the same versions as declared here. Inconsistent versions can cause failing tests.
 dependencies {
-    implementation("org.openrndr:openrndr-color:0.4.1-rc.1")
-    implementation("org.openrndr:openrndr-math:0.4.1-rc.1")
-    implementation("org.openrndr.extra:orx-color:0.4.1-rc.1")
+    implementation(libs.openrndr.color)
+    implementation(libs.openrndr.math)
+    implementation(libs.orx.color)
 }
 
 // OPENRNDR/ORX includes *a lot* of transitive dependencies that are completely unnecessary to us
@@ -46,7 +43,7 @@ kotlin {
 // Configure Gradle IntelliJ Plugin
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
-    pluginName.set(properties("pluginName"))
+    pluginName.set(findProperty("pluginName").toString())
     version.set("222.3345.118")
     type.set("IC") // Target IDE Platform
 
@@ -55,7 +52,7 @@ intellij {
 
 // Configure Gradle Changelog Plugin - read more: https://github.com/JetBrains/gradle-changelog-plugin
 changelog {
-    version.set(properties("pluginVersion"))
+    version.set(getVersion().toString())
     groups.set(emptyList())
 }
 
@@ -73,7 +70,9 @@ tasks {
         include("**/*Test.class")
         systemProperties(
             // This should always be an absolute path
-            "idea.home.path" to (System.getenv("INTELLIJ_SOURCES") ?: defaultIntellijSourcesPath)
+            "idea.home.path" to (System.getenv("INTELLIJ_SOURCES") ?: defaultIntellijSourcesPath),
+            "openrndr.version" to libs.versions.openrndr.get(),
+            "orx.version" to libs.versions.orx.get()
         )
     }
 
@@ -82,7 +81,7 @@ tasks {
     }
 
     patchPluginXml {
-        version.set(properties("pluginVersion"))
+        version.set(getVersion().toString())
         sinceBuild.set("222")
         untilBuild.set("223.*")
 
@@ -101,7 +100,7 @@ tasks {
 
         // Get the latest available change notes from the changelog file
         changeNotes.set(provider(changelog.run {
-            getOrNull(properties("pluginVersion")) ?: getLatest()
+            getOrNull(getVersion().toString()) ?: getLatest()
         }::toHTML))
     }
 
@@ -117,6 +116,6 @@ tasks {
         // pluginVersion is based on the SemVer (https://semver.org) and supports pre-release labels, like 2.1.7-alpha.3
         // Specify pre-release label to publish the plugin in a custom Release Channel automatically. Read more:
         // https://plugins.jetbrains.com/docs/intellij/deployment.html#specifying-a-release-channel
-        channels.set(listOf(properties("pluginVersion").split('-').getOrElse(1) { "default" }.split('.').first()))
+        channels.set(listOf(version.toString().split('-').getOrElse(1) { "default" }.split('.').first()))
     }
 }
