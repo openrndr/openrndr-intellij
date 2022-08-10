@@ -65,7 +65,7 @@ object ColorRGBaColorProvider : ElementColorProvider {
             val resolvedCall = call?.getResolvedCall(outerExpressionContext) as? NewAbstractResolvedCall ?: return@r
 
             val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(resolvedCall.resultingDescriptor)
-            val psiFactory = KtPsiFactory(element)
+            val psiFactory = KtPsiFactory(project)
             if (colorRGBaDescriptor == null) {
                 val classDescriptor =
                     (resolvedCall.resultingDescriptor as? DeclarationDescriptor)?.getTopLevelContainingClassifier() as? ClassDescriptor
@@ -232,8 +232,7 @@ object ColorRGBaColorProvider : ElementColorProvider {
         // There's no easy way to get the ColorRGBa extension properties in orx, we have to use Java reflection
         val extensionColorsJavaClass = Class.forName("org.openrndr.extra.color.presets.ColorsKt")
         for (method in extensionColorsJavaClass.declaredMethods) {
-            // Every generated java method is prefixed with "get"
-            this[method.name.drop(3)] =
+            this[method.name.removePrefix("get")] =
                 (method.invoke(ColorRGBa::javaClass, ColorRGBa.Companion) as ColorRGBa).toAWTColor()
         }
     }
