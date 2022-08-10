@@ -1,9 +1,5 @@
 package org.openrndr.plugin.intellij.editor
 
-import com.intellij.testFramework.IdeaTestUtil
-import com.intellij.testFramework.LightProjectDescriptor
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor
 import com.intellij.util.ui.ColorIcon
 import com.intellij.util.ui.ColorsIcon
 import org.intellij.lang.annotations.Language
@@ -11,13 +7,11 @@ import org.jetbrains.kotlin.idea.KotlinFileType
 import org.openrndr.color.*
 import org.openrndr.extra.color.presets.HOT_PINK
 import org.openrndr.extra.color.spaces.ColorOKLABa
+import org.openrndr.plugin.intellij.ColorRGBaTestCase
 import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.toAWTColor
 import java.awt.Color
 
-class ColorRGBaColorProviderTest : BasePlatformTestCase() {
-
-    override fun getProjectDescriptor(): LightProjectDescriptor = PROJECT_DESCRIPTOR
-
+class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
     private fun assertGutterIconColor(
         expected: Color, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") colorRGBaColor: String
     ) = assertGutterIconColorManual(expected, colorRGBaExpressionTemplate(colorRGBaColor))
@@ -25,7 +19,7 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     private fun assertGutterIconColorManual(expected: Color, code: String) {
         myFixture.configureByText(KotlinFileType.INSTANCE, code)
         val gutterMarks = myFixture.findAllGutters()
-        assertTrue(gutterMarks.size == 1)
+        assertSize(1, gutterMarks)
         val actualColorIcon = gutterMarks[0].icon as? ColorIcon
         assertEquals(expected, actualColorIcon?.iconColor)
     }
@@ -45,7 +39,7 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
     ) {
         myFixture.configureByText(KotlinFileType.INSTANCE, code)
         val gutterMarks = myFixture.findAllGutters()
-        assertTrue(gutterMarks.size == 1)
+        assertSize(1, gutterMarks)
         val expectedColorsIcon = ColorsIcon(12, *expected.reversedArray())
         val actualColorsIcon = gutterMarks[0].icon as? ColorsIcon
         assertEquals(expectedColorsIcon, actualColorsIcon)
@@ -169,37 +163,5 @@ class ColorRGBaColorProviderTest : BasePlatformTestCase() {
 
     fun testPropertyAccessor() {
         assertGutterIconColor(ColorRGBa(0.3, 0.7, 0.1).toAWTColor(), "ColorRGBa(0.3, 0.7, 0.1).g")
-    }
-
-    companion object {
-        private val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(
-            { IdeaTestUtil.getMockJdk17() }, listOf(
-                "org.openrndr:openrndr-color:${System.getProperty("openrndr.version")}",
-                "org.openrndr.extra:orx-color:${System.getProperty("orx.version")}"
-            )
-        )
-
-        private const val IMPORTS: String = """import org.openrndr.color.*
-import org.openrndr.extra.color.presets.*
-import org.openrndr.extra.color.spaces.*"""
-
-        private const val IMPORTS_PREFIX: String = "$IMPORTS\nfun main() {"
-
-        @Language("kt")
-        private fun colorRGBaExpressionTemplate(
-            @Language("kt", prefix = "fun main() {", suffix = "}") expression: String
-        ): String = colorRGBaExpressionTemplate("", expression)
-
-        @Language("kt")
-        private fun colorRGBaExpressionTemplate(
-            @Language("kt") prelude: String, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") expression: String
-        ): String = """
-            $IMPORTS
-            $prelude
-            
-            fun main() { 
-                $expression
-            }
-            """.trimIndent()
     }
 }
