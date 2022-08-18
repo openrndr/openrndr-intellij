@@ -4,8 +4,8 @@ dependencyResolutionManagement {
     @Suppress("UnstableApiUsage")
     versionCatalogs {
         create("libs") {
-            version("openrndr", "0.4.1-rc.2")
-            version("orx", "0.4.1-rc.2")
+            version("openrndr", "0.4.1")
+            version("orx", "0.4.1")
 
             library("openrndr-color", "org.openrndr", "openrndr-color").versionRef("openrndr")
             library("openrndr-math", "org.openrndr", "openrndr-math").versionRef("openrndr")
