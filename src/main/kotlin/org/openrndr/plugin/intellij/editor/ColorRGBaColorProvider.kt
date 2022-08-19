@@ -161,6 +161,21 @@ object ColorRGBaColorProvider : ElementColorProvider {
         resolvedArgumentMap: Map<ValueParameterDescriptor, ResolvedValueArgument>, replacementArguments: Array<String>
     ): KtValueArgumentList {
         val psiFactory = KtPsiFactory(this)
+
+        // It handles overloads where the resolved function call is not the one we want anymore
+        // because it is incapable of expressing the desired color accurately, such as `rgb` with 2 arguments.
+        // Potentially incorrect because we're making an assumption the caller is passing correct arguments.
+        if (resolvedArgumentMap.size < replacementArguments.size - 1) {
+            return psiFactory.buildValueArgumentList {
+                appendFixedText("(")
+                repeat(replacementArguments.size) {
+                    if (it != 0) appendFixedText(", ")
+                    appendFixedText(replacementArguments[it])
+                }
+                appendFixedText(")")
+            }
+        }
+
         val firstValueArgument = arguments.firstOrNull()
         return psiFactory.buildValueArgumentList {
             appendFixedText("(")
