@@ -26,10 +26,10 @@ internal enum class ColorRGBaDescriptor {
             val hex = color.rgb.let {
                 // If alpha is 0xff, we won't need it
                 if (it and -0x1000000 == -0x1000000) {
-                    (it and 0xffffff).toString(16)
+                    (it and 0xffffff).toString(16).padStart(6, '0')
                 } else {
                     // We need to rotate it from AARRGGBB to RRGGBBAA
-                    it.rotateLeft(8).toUInt().toString(16)
+                    it.rotateLeft(8).toUInt().toString(16).padStart(8, '0')
                 }
             }
             return arrayOf("\"#$hex\"")
