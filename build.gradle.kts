@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "org.openrndr.plugin.intellij"
-version = "1.0.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -63,11 +63,8 @@ tasks {
         gradleVersion = "7.5.1"
     }
 
-    // https://youtrack.jetbrains.com/issue/IDEA-278926#focus=Comments-27-5561012.0-0
+    @Suppress("UNUSED_VARIABLE")
     val test by getting(Test::class) {
-        isScanForTestClasses = false
-        // Only run tests from classes that end with "Test"
-        include("**/*Test.class")
         systemProperties(
             // This should always be an absolute path
             "idea.home.path" to (System.getenv("INTELLIJ_SOURCES") ?: defaultIntellijSourcesPath),
