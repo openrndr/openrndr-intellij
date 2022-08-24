@@ -17,21 +17,15 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.openrndr.color)
-    implementation(libs.openrndr.math)
-    implementation(libs.orx.color)
-}
-
-// OPENRNDR/ORX includes *a lot* of transitive dependencies that are completely unnecessary to us
-configurations.implementation {
-    exclude(group = "org.jetbrains.kotlin")
-    exclude(group = "org.jetbrains.kotlinx")
-    exclude(group = "io.github.microutils")
-    exclude(group = "org.openrndr", module = "openrndr-application")
-    exclude(group = "org.openrndr", module = "openrndr-draw")
-    exclude(group = "org.openrndr", module = "openrndr-filter")
-    exclude(group = "org.openrndr.extra", module = "orx-parameters")
-    exclude(group = "org.openrndr.extra", module = "orx-shader-phrases")
+    implementation(libs.openrndr.color) {
+        isTransitive = false
+    }
+    implementation(libs.openrndr.math) {
+        isTransitive = false
+    }
+    implementation(libs.orx.color) {
+        isTransitive = false
+    }
 }
 
 kotlin {
