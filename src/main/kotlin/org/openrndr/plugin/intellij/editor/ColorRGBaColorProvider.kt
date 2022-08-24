@@ -157,7 +157,7 @@ object ColorRGBaColorProvider : ElementColorProvider {
      * @param replacementArguments replacement arguments which are
      * retrieved by parameter index and converted into [KtExpression]s
      */
-    fun KtValueArgumentList.constructReplacement(
+    private fun KtValueArgumentList.constructReplacement(
         resolvedArgumentMap: Map<ValueParameterDescriptor, ResolvedValueArgument>, replacementArguments: Array<String>
     ): KtValueArgumentList {
         val psiFactory = KtPsiFactory(this)
