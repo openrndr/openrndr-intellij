@@ -1,5 +1,7 @@
 # OPENRNDR Plugin for IntelliJ
 
+[Install it on the JetBrains Marketplace](https://plugins.jetbrains.com/plugin/19736-openrndr)
+
 <!-- Plugin description -->
 Support for the [OPENRNDR framework](https://github.com/openrndr/openrndr) in Kotlin.
 
