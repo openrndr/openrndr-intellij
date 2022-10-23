@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.ColorXYZa
 import org.openrndr.color.Linearity
 
+@Suppress("MemberVisibilityCanBePrivate")
 internal sealed class ConstantValueContainer<out T> {
     class Constant<out T>(val value: ConstantValue<T>) : ConstantValueContainer<T>()
     class WhitePoint(val value: ColorXYZa) : ConstantValueContainer<ColorXYZa>()

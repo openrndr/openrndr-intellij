@@ -32,21 +32,21 @@ object ColorRGBaCompletionContributor : CompletionContributor() {
 
     private fun decorateLookupElement(element: LookupElement, descriptor: ValueDescriptor) =
         object : LookupElementDecorator<LookupElement>(element) {
-            override fun renderElement(presentation: LookupElementPresentation?) {
+            override fun renderElement(presentation: LookupElementPresentation) {
                 super.renderElement(presentation)
                 val color = staticColorMap[descriptor.name.identifier] ?: return
-                presentation?.icon = JBUIScale.scaleIcon(RoundColorIcon(color, 16, 14))
+                presentation.icon = JBUIScale.scaleIcon(RoundColorIcon(color, 16, 14))
             }
 
             override fun getExpensiveRenderer() = object : LookupElementRenderer<LookupElement>() {
-                override fun renderElement(element: LookupElement?, presentation: LookupElementPresentation?) {
+                override fun renderElement(element: LookupElement?, presentation: LookupElementPresentation) {
                     element?.renderElement(presentation)
                     val property = element?.psiElement as? KtDeclarationWithInitializer ?: return
                     val callExpression =
                         PsiTreeUtil.findChildOfType(property.initializer, KtCallExpression::class.java, false) ?: return
                     val leaf = PsiTreeUtil.getDeepestFirst(callExpression)
                     val color = ColorRGBaColorProvider.getColorFrom(leaf) ?: return
-                    presentation?.setTypeText(presentation.typeText, JBUIScale.scaleIcon(RoundColorIcon(color, 16, 14)))
+                    presentation.setTypeText(presentation.typeText, JBUIScale.scaleIcon(RoundColorIcon(color, 16, 14)))
                 }
             }
         }

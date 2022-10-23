@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Support for 2022.3
 
 ## [1.0.1]
 ### Fixed

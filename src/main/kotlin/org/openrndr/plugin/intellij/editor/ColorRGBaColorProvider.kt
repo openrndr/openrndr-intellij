@@ -32,6 +32,7 @@ import org.openrndr.plugin.intellij.editor.ConstantValueContainer.Companion.isRe
 import java.awt.Color
 import kotlin.reflect.full.memberProperties
 
+@Suppress("UseJBColor")
 object ColorRGBaColorProvider : ElementColorProvider {
     private val LOG = logger<ColorRGBaColorProvider>()
 

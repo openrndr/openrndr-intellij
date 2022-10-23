@@ -17,6 +17,9 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
+### Fleet ###
+.fleet/
+
 ### VS Code ###
 .vscode/
 

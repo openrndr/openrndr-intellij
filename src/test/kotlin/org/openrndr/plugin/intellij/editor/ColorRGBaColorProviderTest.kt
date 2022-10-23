@@ -11,6 +11,7 @@ import org.openrndr.plugin.intellij.ColorRGBaTestCase
 import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.toAWTColor
 import java.awt.Color
 
+@Suppress("UseJBColor")
 class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
     private fun assertGutterIconColor(
         expected: Color, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") colorRGBaColor: String
