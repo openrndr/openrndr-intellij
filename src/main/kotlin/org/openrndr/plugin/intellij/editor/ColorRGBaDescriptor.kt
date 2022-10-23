@@ -18,7 +18,7 @@ import java.util.*
 
 internal typealias ArgumentMap = Map<ValueParameterDescriptor, ConstantValueContainer<*>>
 
-private val DEFAULT_COLORRGBA = ColorRGBa(1.0, 1.0, 1.0, 1.0, Linearity.UNKNOWN)
+private val defaultColorRGBa = ColorRGBa(1.0, 1.0, 1.0, 1.0, Linearity.UNKNOWN)
 
 internal enum class ColorRGBaDescriptor {
     FromHex {
@@ -48,7 +48,7 @@ internal enum class ColorRGBaDescriptor {
             }
         }
 
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.linearity
     },
     RGB {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
@@ -78,109 +78,109 @@ internal enum class ColorRGBaDescriptor {
             }
         }
 
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.linearity
     },
 
     // @formatter:off
     ColorRGBaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toRGBa)
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? = colorFromArgumentsSimple(argumentMap, ::ColorRGBa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.linearity
     },
     ColorHSLaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toHSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toHSLa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toHSLa().toRGBa().linearity
     },
     ColorHSVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toHSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toHSVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toHSVa().toRGBa().linearity
     },
     ColorLABaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLABa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLABa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLABa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toLABa().toRGBa().linearity
     },
     ColorLCHABaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLCHABa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLCHABa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLCHABa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toLCHABa().toRGBa().linearity
     },
     ColorLCHUVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLCHUVa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLCHUVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLCHUVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toLCHUVa().toRGBa().linearity
     },
     ColorLSHABaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLCHABa(ref!!).toLSHABa() }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLSHABa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLCHABa().toLSHABa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toLCHABa().toLSHABa().toRGBa().linearity
     },
     ColorLSHUVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLCHUVa(ref!!).toLSHUVa() }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLSHUVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLCHUVa().toLSHUVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toLCHUVa().toLSHUVa().toRGBa().linearity
     },
     ColorLUVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { it.toLUVa(ref!!) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsRef(argumentMap, ::ColorLUVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toLUVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toLUVa().toRGBa().linearity
     },
     ColorXSLaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toXSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSLa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toXSLa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toXSLa().toRGBa().linearity
     },
     ColorXSVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toXSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toXSVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toXSVa().toRGBa().linearity
     },
     ColorXYZaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toXYZa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXYZa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toXYZa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toXYZa().toRGBa().linearity
     },
     ColorYxyaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity) { ColorYxya.fromXYZa(it.toXYZa()) }
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorYxya)
-        override val defaultLinearity: Linearity = ColorYxya.fromXYZa(DEFAULT_COLORRGBA.toXYZa()).toRGBa().linearity
+        override val defaultLinearity: Linearity = ColorYxya.fromXYZa(defaultColorRGBa.toXYZa()).toRGBa().linearity
     },
     ColorHPLUVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toHPLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHPLUVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toHPLUVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toHPLUVa().toRGBa().linearity
     },
     ColorHSLUVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toHSLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorHSLUVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toHSLUVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toHSLUVa().toRGBa().linearity
     },
     ColorOKHSLaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toOKHSLa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKHSLa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toOKHSLa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toOKHSLa().toRGBa().linearity
     },
     ColorOKHSVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toOKHSVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKHSVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toOKHSVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toOKHSVa().toRGBa().linearity
     },
     ColorOKLABaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toOKLABa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKLABa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toOKLABa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toOKLABa().toRGBa().linearity
     },
     ColorOKLCHaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toOKLCHa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorOKLCHa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toOKLCHa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toOKLCHa().toRGBa().linearity
     },
     ColorXSLUVaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toXSLUVa)
         override fun colorFromArguments(argumentMap: ArgumentMap) = colorFromArgumentsSimple(argumentMap, ::ColorXSLUVa)
-        override val defaultLinearity: Linearity = DEFAULT_COLORRGBA.toXSLUVa().toRGBa().linearity
+        override val defaultLinearity: Linearity = defaultColorRGBa.toXSLUVa().toRGBa().linearity
     };
     // @formatter:on
 

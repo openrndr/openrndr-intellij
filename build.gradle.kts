@@ -1,4 +1,8 @@
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+
+// Largely based on intellij-platform-plugin-template
+// https://github.com/JetBrains/intellij-platform-plugin-template/blob/main/build.gradle.kts
 
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
@@ -9,7 +13,7 @@ plugins {
 }
 
 group = "org.openrndr.plugin.intellij"
-version = "1.0.1"
+version = "1.1.0"
 
 repositories {
     mavenCentral()
@@ -17,28 +21,22 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.openrndr.color) {
-        isTransitive = false
-    }
-    implementation(libs.openrndr.math) {
-        isTransitive = false
-    }
-    implementation(libs.orx.color) {
-        isTransitive = false
-    }
+    implementation(libs.openrndr.color) { isTransitive = false }
+    implementation(libs.openrndr.math) { isTransitive = false }
+    implementation(libs.orx.color) { isTransitive = false }
 }
 
 kotlin {
-    jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
+    jvmToolchain(17)
 }
 
 // Configure Gradle IntelliJ Plugin
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
     pluginName.set(findProperty("pluginName").toString())
-    version.set("222.3345.118")
+    // https://www.jetbrains.com/intellij-repository/releases/
+    // https://www.jetbrains.com/intellij-repository/snapshots/
+    version.set("222.4345.14")
     type.set("IC") // Target IDE Platform
 
     plugins.set(listOf("com.intellij.java", "org.jetbrains.kotlin"))
@@ -46,8 +44,8 @@ intellij {
 
 // Configure Gradle Changelog Plugin - read more: https://github.com/JetBrains/gradle-changelog-plugin
 changelog {
-    version.set(getVersion().toString())
-    groups.set(emptyList())
+    groups.set(listOf("Added", "Changed", "Removed", "Fixed"))
+    repositoryUrl.set("https://github.com/openrndr/openrndr-intellij")
 }
 
 val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community").absolutePath
@@ -62,8 +60,9 @@ tasks {
         systemProperties(
             // This should always be an absolute path
             "idea.home.path" to (System.getenv("INTELLIJ_SOURCES") ?: defaultIntellijSourcesPath),
-            "openrndr.version" to libs.versions.openrndr.get(),
-            "orx.version" to libs.versions.orx.get()
+            "version_used_for.openrndr" to libs.versions.openrndr.get(),
+            "version_used_for.orx" to libs.versions.orx.get(),
+            "version_used_for.kotlin" to libs.versions.kotlin.get()
         )
     }
 
@@ -72,13 +71,13 @@ tasks {
     }
 
     patchPluginXml {
-        version.set(getVersion().toString())
+        version.set(project.version.toString())
         sinceBuild.set("222")
-        untilBuild.set("223.*")
-
+        // No restrictions on compatible IDE versions
+        untilBuild.set("")
         // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest
         pluginDescription.set(
-            projectDir.resolve("README.md").readText().lines().run {
+            file("README.md").readText().lines().run {
                 val start = "<!-- Plugin description -->"
                 val end = "<!-- Plugin description end -->"
 
@@ -86,13 +85,18 @@ tasks {
                     throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
                 }
                 subList(indexOf(start) + 1, indexOf(end))
-            }.joinToString("\n").run(::markdownToHTML)
+            }.joinToString("\n").let { markdownToHTML(it) }
         )
 
         // Get the latest available change notes from the changelog file
-        changeNotes.set(provider(changelog.run {
-            getOrNull(getVersion().toString()) ?: getLatest()
-        }::toHTML))
+        changeNotes.set(provider {
+            with(changelog) {
+                renderItem(
+                    getOrNull(project.version.toString()) ?: getLatest(),
+                    Changelog.OutputType.HTML,
+                )
+            }
+        })
     }
 
     signPlugin {

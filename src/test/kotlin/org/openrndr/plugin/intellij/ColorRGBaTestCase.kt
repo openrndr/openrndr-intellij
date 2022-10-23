@@ -31,8 +31,11 @@ abstract class ColorRGBaTestCase : BasePlatformTestCase() {
     companion object {
         protected val PROJECT_DESCRIPTOR = DefaultLightProjectDescriptor(
             { IdeaTestUtil.getMockJdk17() }, listOf(
-                "org.openrndr:openrndr-color:${System.getProperty("openrndr.version")}",
-                "org.openrndr.extra:orx-color:${System.getProperty("orx.version")}"
+                "org.openrndr:openrndr-color:${System.getProperty("version_used_for.openrndr")}",
+                "org.openrndr.extra:orx-color:${System.getProperty("version_used_for.orx")}",
+                // This isn't getting pulled in as a transitive dependency from orx-color for
+                // some reason, so we add it manually.
+                "org.jetbrains.kotlin:kotlin-stdlib-common:${System.getProperty("version_used_for.kotlin")}"
             )
         )
 

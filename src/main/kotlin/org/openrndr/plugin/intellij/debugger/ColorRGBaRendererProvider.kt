@@ -19,6 +19,7 @@ import java.awt.Color
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
+@Suppress("UseJBColor")
 object ColorRGBaRendererProvider : CompoundRendererProvider() {
     private val LOG = logger<ColorRGBaRendererProvider>()
     private const val PACKAGE_NAME = "org.openrndr.color"
