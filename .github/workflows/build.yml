@@ -80,6 +80,15 @@ jobs:
           name: tests-result
           path: ${{ github.workspace }}/build/reports/tests
 
+      - name: Add coverage report to PR
+        uses: mi-kas/kover-report@v1.2
+        if: github.event_name == 'pull_request'
+        with:
+          path: ${{ github.workspace }}/build/reports/kover/xml/report.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: Code Coverage
+          update-comment: true
+
       - name: Setup Plugin Verifier IDEs cache
         uses: actions/cache@v3
         with:
