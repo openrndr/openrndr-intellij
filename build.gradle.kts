@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.intellij)
     alias(libs.plugins.changelog)
+    alias(libs.plugins.kover)
 }
 
 group = "org.openrndr.plugin.intellij"
@@ -46,6 +47,11 @@ intellij {
 changelog {
     groups.set(listOf("Added", "Changed", "Removed", "Fixed"))
     repositoryUrl.set("https://github.com/openrndr/openrndr-intellij")
+}
+
+// Configure Gradle Kover Plugin - read more: https://github.com/Kotlin/kotlinx-kover#configuration
+kover.xmlReport {
+    onCheck.set(true)
 }
 
 val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community").absolutePath
