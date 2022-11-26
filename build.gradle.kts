@@ -58,7 +58,7 @@ val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community
 
 tasks {
     wrapper {
-        gradleVersion = "7.5.1"
+        gradleVersion = "7.6"
     }
 
     @Suppress("UNUSED_VARIABLE")
