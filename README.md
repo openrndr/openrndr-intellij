@@ -32,6 +32,9 @@ Support for the [OPENRNDR framework](https://github.com/openrndr/openrndr) in Ko
 The plugin tests have a dependency on openrndr-color which unfortunately means intellij-community sources will be needed
 to run the tests.
 
+Make sure you check out intellij-community repository to the same tag you're trying to build the plugin against.
+So for example, if this plugin is targeting `222.4554.10`, you will need to run `git switch --detach idea/222.4554.10`.
+
 Clone https://github.com/JetBrains/intellij-community ([consult their README](https://github.com/JetBrains/intellij-community#getting-intellij-idea-community-edition-source-code=))
 in a directory adjacent to where you cloned this project so the resulting directory layout looks like the following.
 

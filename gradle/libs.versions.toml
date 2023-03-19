@@ -1,7 +1,7 @@
 [versions]
-kotlin = "1.7.21"
-openrndr = "0.4.2-rc.2"
-orx = "0.4.2-rc.2"
+kotlin = "1.8.10"
+openrndr = "0.4.2"
+orx = "0.4.2"
 
 [libraries]
 openrndr-color = { group = "org.openrndr", name = "openrndr-color", version.ref = "openrndr" }
@@ -10,6 +10,6 @@ orx-color = { group = "org.openrndr.extra", name = "orx-color", version.ref = "o
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-intellij = { id = "org.jetbrains.intellij", version = "1.11.0" }
+intellij = { id = "org.jetbrains.intellij", version = "1.13.2" }
 changelog = { id = "org.jetbrains.changelog", version = "2.0.0" }
 kover = { id = "org.jetbrains.kotlinx.kover", version = "0.6.1" }

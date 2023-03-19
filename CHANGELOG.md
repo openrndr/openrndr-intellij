@@ -5,6 +5,9 @@
 ### Added
 
 ### Changed
+- Update Kotlin to 1.8.10
+- Update OPENRNDR/ORX to 0.4.2
+- Update gradle-intellij-plugin to 1.13.2
 
 ### Removed
 

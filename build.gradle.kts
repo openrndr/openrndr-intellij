@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "org.openrndr.plugin.intellij"
-version = "1.1.0"
+version = "1.1.1"
 
 repositories {
     mavenCentral()
@@ -37,7 +37,7 @@ intellij {
     pluginName.set(findProperty("pluginName").toString())
     // https://www.jetbrains.com/intellij-repository/releases/
     // https://www.jetbrains.com/intellij-repository/snapshots/
-    version.set("222.4345.14")
+    version.set("222.4554.10")
     type.set("IC") // Target IDE Platform
 
     plugins.set(listOf("com.intellij.java", "org.jetbrains.kotlin"))
@@ -58,7 +58,7 @@ val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community
 
 tasks {
     wrapper {
-        gradleVersion = "7.6"
+        gradleVersion = "8.0.2"
     }
 
     @Suppress("UNUSED_VARIABLE")
@@ -94,6 +94,7 @@ tasks {
             }.joinToString("\n").let { markdownToHTML(it) }
         )
 
+        val changelog = project.changelog // local variable for configuration cache compatibility
         // Get the latest available change notes from the changelog file
         changeNotes.set(provider {
             with(changelog) {

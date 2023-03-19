@@ -25,11 +25,13 @@ jobs:
       version: ${{ steps.properties.outputs.version }}
       changelog: ${{ steps.properties.outputs.changelog }}
     steps:
-      - name: Checkout current repository
+      # Check out current repository
+      - name: Fetch Sources
         uses: actions/checkout@v3
 
-      - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@v1.0.5
+      # Validate wrapper
+      - name: Gradle Wrapper Validation
+        uses: gradle/wrapper-validation-action@v1.0.6
 
       # TODO: Fetch version number for regex from gradle properties
       - name: Find latest tag for given IntelliJ version
@@ -37,7 +39,7 @@ jobs:
         id: intellij-tag
         with:
           repository: JetBrains/intellij-community
-          regex: ^idea\/222\.4345(?:\.\d+)?$
+          regex: ^idea\/222\.4554(?:\.\d+)?$
 
       - name: Checkout intellij-community repository
         uses: actions/checkout@v3
@@ -54,20 +56,21 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Set environment variables and export properties
+      # Set environment variables
+      - name: Export Properties
         id: properties
         run: |
           PROPERTIES="$(./gradlew properties --console=plain -q)"
           VERSION="$(echo "$PROPERTIES" | grep "^version:" | cut -f2- -d ' ')"
           NAME="$(echo "$PROPERTIES" | grep "^pluginName:" | cut -f2- -d ' ')"
           CHANGELOG="$(./gradlew getChangelog --unreleased --no-header --console=plain -q)"
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "name=$NAME" >> $GITHUB_OUTPUT
-          echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
           echo "pluginVerifierHomeDir=~/.pluginVerifier" >> $GITHUB_OUTPUT
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           ./gradlew listProductsReleases # prepare list of IDEs for Plugin Verifier
 
       - name: Run tests
@@ -81,7 +84,7 @@ jobs:
           path: ${{ github.workspace }}/build/reports/tests
 
       - name: Add coverage report to PR
-        uses: mi-kas/kover-report@v1.2
+        uses: mi-kas/kover-report@v1.5
         if: github.event_name == 'pull_request'
         with:
           path: ${{ github.workspace }}/build/reports/kover/xml/report.xml
@@ -89,23 +92,27 @@ jobs:
           title: Code Coverage
           update-comment: true
 
-      - name: Setup Plugin Verifier IDEs cache
+      # Cache Plugin Verifier IDEs
+      - name: Setup Plugin Verifier IDEs Cache
         uses: actions/cache@v3
         with:
           path: ${{ steps.properties.outputs.pluginVerifierHomeDir }}/ides
           key: plugin-verifier-${{ hashFiles('build/listProductsReleases.txt') }}
 
-      - name: Run Verify Plugin and IntelliJ Plugin Verifier tool
-        run: ./gradlew runPluginVerifier -Pplugin.verifier.home.dir=${{ steps.properties.outputs.pluginVerifierHomeDir }}
+      # Run Verify Plugin task and IntelliJ Plugin Verifier tool
+      - name: Run Plugin Verification tasks
+        run: ./gradlew runPluginVerifier -Dplugin.verifier.home.dir=${{ steps.properties.outputs.pluginVerifierHomeDir }}
 
-      - name: Collect Plugin Verifier result
+      # Collect Plugin Verifier Result
+      - name: Collect Plugin Verifier Result
         if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           name: pluginVerifier-result
           path: ${{ github.workspace }}/build/reports/pluginVerifier
 
-      - name: Prepare plugin archive content for creating artifact
+      # Prepare plugin archive content for creating artifact
+      - name: Prepare Plugin Artifact
         id: artifact
         working-directory: ${{ github.workspace }}/build/distributions
         run: |
@@ -113,7 +120,8 @@ jobs:
           unzip "$FILENAME" -d content
           echo "filename=${FILENAME:0:-4}" >> $GITHUB_OUTPUT
 
-      - name: Upload already-built plugin as an artifact
+      # Store already-built plugin as an artifact for downloading
+      - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: ${{ steps.artifact.outputs.filename }}
@@ -129,20 +137,21 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout current repository
+
+      # Check out current repository
+      - name: Fetch Sources
         uses: actions/checkout@v3
 
-      # Remove old release drafts by using the curl request for the available releases with draft flag
-      - name: Remove old release drafts
+      # Remove old release drafts by using the curl request for the available releases with a draft flag
+      - name: Remove Old Release Drafts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api repos/{owner}/{repo}/releases \
             --jq '.[] | select(.draft == true) | .id' \
             | xargs -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
-
-      # Create new release draft - which is not publicly visible and requires manual acceptance
-      - name: Create new release draft
+      # Create a new release draft which is not publicly visible and requires manual acceptance
+      - name: Create Release Draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
