@@ -5,13 +5,17 @@
 ### Added
 
 ### Changed
-- Update Kotlin to 1.8.10
-- Update OPENRNDR/ORX to 0.4.2
-- Update gradle-intellij-plugin to 1.13.2
 
 ### Removed
 
 ### Fixed
+
+## [1.1.1] - 2023-03-19
+
+### Changed
+- Update Kotlin to 1.8.10
+- Update OPENRNDR/ORX to 0.4.2
+- Update gradle-intellij-plugin to 1.13.2
 
 ## [1.1.0] - 2022-12-24
 
@@ -32,7 +36,8 @@
 - ColorRGBa preview in debugger and expression evaluation dialog
 - ColorRGBa preview in the auto-completion dialog
 
-[Unreleased]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/openrndr/openrndr-intellij/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/openrndr/openrndr-intellij/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/openrndr/openrndr-intellij/commits/v1.0.0
