@@ -16,7 +16,9 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout current repository
+
+      # Check out current repository
+      - name: Fetch Sources
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.release.tag_name }}
@@ -27,7 +29,8 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Set environment variables and export properties
+      # Set environment variables
+      - name: Export Properties
         id: properties
         run: |
           CHANGELOG="$(cat << 'EOM' | sed -e 's/^[[:space:]]*$//g' -e '/./,$!d'
@@ -35,19 +38,20 @@ jobs:
           EOM
           )"
           
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
-          echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       # Update Unreleased section with the current release note
-      - name: Patch changelog
+      - name: Patch Changelog
         if: ${{ steps.properties.outputs.changelog != '' }}
         env:
           CHANGELOG: ${{ steps.properties.outputs.changelog }}
-        run: ./gradlew patchChangelog --release-note="$CHANGELOG"
+        run: |
+          ./gradlew patchChangelog --release-note="$CHANGELOG"
 
-      - name: Publish plugin to the Marketplace
+      # Publish the plugin to the Marketplace
+      - name: Publish Plugin
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
           CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
@@ -55,11 +59,13 @@ jobs:
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
         run: ./gradlew publishPlugin
 
-      - name: Upload artifact as release asset
+      # Upload artifact as a release asset
+      - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ github.event.release.tag_name }} ./build/distributions/*
 
+      # Create pull request
       - name: Create Pull Request
         if: ${{ steps.properties.outputs.changelog != '' }}
         env:
@@ -78,5 +84,4 @@ jobs:
           gh pr create \
             --title "Changelog update - \`$VERSION\`" \
             --body "Current pull request contains patched \`CHANGELOG.md\` file for the \`$VERSION\` version." \
-            --base main \
             --head $BRANCH
