@@ -8,6 +8,8 @@ import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
@@ -39,19 +41,28 @@ object ColorRGBaColorProvider : ElementColorProvider {
     override fun getColorFrom(element: PsiElement): Color? {
         if (element !is LeafPsiElement) return null
         if (!COLOR_PROVIDER_PATTERN.accepts(element)) return null
-        val outerExpression = element.getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression
-        val outerExpressionContext = outerExpression?.analyze() ?: return null
-        val resolvedCall = outerExpression.getResolvedCall(outerExpressionContext) as? NewAbstractResolvedCall
-        val descriptor = resolvedCall?.resultingDescriptor
+        return CachedValuesManager.getCachedValue(element) c@{
+            val outerExpression =
+                element.getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression
+            val outerExpressionContext = outerExpression?.analyze()
+            val resolvedCall =
+                outerExpressionContext?.let { outerExpression.getResolvedCall(it) } as? NewAbstractResolvedCall
+            val descriptor = resolvedCall?.resultingDescriptor
 
-        if (descriptor?.isColorModelPackage() != true) return null
-        if (resolvedCall.kotlinCall?.callKind == KotlinCallKind.VARIABLE) {
-            return staticColorMap[descriptor.getImportableDescriptor().name.identifier]
+            if (descriptor?.isColorModelPackage() != true) {
+                CachedValueProvider.Result.create(null, element)
+            } else if (resolvedCall.kotlinCall?.callKind == KotlinCallKind.VARIABLE) {
+                CachedValueProvider.Result.create(
+                    staticColorMap[descriptor.getImportableDescriptor().name.identifier],
+                    element
+                )
+            } else {
+                val argumentMap = resolvedCall.computeValueArguments(outerExpressionContext)
+                val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor)
+                val color = argumentMap?.let { colorRGBaDescriptor?.colorFromArguments(it) }
+                CachedValueProvider.Result.create(color, element)
+            }
         }
-
-        val argumentMap = resolvedCall.computeValueArguments(outerExpressionContext) ?: return null
-        val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor)
-        return colorRGBaDescriptor?.colorFromArguments(argumentMap)
     }
 
     override fun setColorTo(element: PsiElement, color: Color) {
