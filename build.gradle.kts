@@ -50,15 +50,19 @@ changelog {
 }
 
 // Configure Gradle Kover Plugin - read more: https://github.com/Kotlin/kotlinx-kover#configuration
-kover.xmlReport {
-    onCheck.set(true)
+koverReport {
+    defaults {
+        xml {
+            onCheck = true
+        }
+    }
 }
 
 val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community").absolutePath
 
 tasks {
     wrapper {
-        gradleVersion = "8.0.2"
+        gradleVersion = "8.1.1"
     }
 
     @Suppress("UNUSED_VARIABLE")
