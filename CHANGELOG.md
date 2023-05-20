@@ -5,10 +5,13 @@
 ### Added
 
 ### Changed
+- Update Kotlin to 1.8.21
 
 ### Removed
 
 ### Fixed
+- Refactor extensions from `object` to `class` to avoid issues with Kotlin 
+  singletons https://plugins.jetbrains.com/docs/intellij/using-kotlin.html#caution
 
 ## [1.1.1] - 2023-03-19
 
