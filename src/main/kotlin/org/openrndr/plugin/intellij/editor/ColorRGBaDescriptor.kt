@@ -9,8 +9,8 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.jetbrains.kotlin.utils.threadLocal
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.toAWTColor
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.toColorRGBa
+import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
+import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toColorRGBa
 import java.awt.Color
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
