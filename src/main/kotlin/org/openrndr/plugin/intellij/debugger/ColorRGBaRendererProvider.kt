@@ -20,12 +20,14 @@ import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
 @Suppress("UseJBColor")
-object ColorRGBaRendererProvider : CompoundRendererProvider() {
-    private val LOG = logger<ColorRGBaRendererProvider>()
-    private const val PACKAGE_NAME = "org.openrndr.color"
-    private const val COLOR_MODEL_NAME = "$PACKAGE_NAME.ColorModel"
-    private const val COLORRGBA_NAME = "$PACKAGE_NAME.ColorRGBa"
-    private val colorRGBaFieldNames = arrayOf("r", "g", "b", "alpha")
+class ColorRGBaRendererProvider : CompoundRendererProvider() {
+    private companion object {
+        val LOG = logger<ColorRGBaRendererProvider>()
+        const val PACKAGE_NAME = "org.openrndr.color"
+        const val COLOR_MODEL_NAME = "$PACKAGE_NAME.ColorModel"
+        const val COLORRGBA_NAME = "$PACKAGE_NAME.ColorRGBa"
+        val colorRGBaFieldNames = arrayOf("r", "g", "b", "alpha")
+    }
 
     override fun getName(): String = "ColorRGBa"
 

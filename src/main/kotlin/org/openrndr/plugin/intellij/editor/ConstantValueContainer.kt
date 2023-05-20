@@ -14,14 +14,13 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.ColorXYZa
 import org.openrndr.color.Linearity
 
-@Suppress("MemberVisibilityCanBePrivate")
 internal sealed class ConstantValueContainer<out T> {
     class Constant<out T>(val value: ConstantValue<T>) : ConstantValueContainer<T>()
     class WhitePoint(val value: ColorXYZa) : ConstantValueContainer<ColorXYZa>()
     companion object {
-        val REF = WhitePoint(ColorXYZa.NEUTRAL)
-        val ALPHA = Constant(DoubleValue(1.0))
-        val LINEARITY = Constant(
+        private val REF = WhitePoint(ColorXYZa.NEUTRAL)
+        private val ALPHA = Constant(DoubleValue(1.0))
+        private val LINEARITY = Constant(
             EnumValue(
                 ClassId.topLevel(FqName("org.openrndr.color.Linearity")),
                 // Default value for Linearity in ColorRGBa
@@ -34,12 +33,12 @@ internal sealed class ConstantValueContainer<out T> {
             return s == "org.openrndr.color.rgb" || s == "org.openrndr.color.hsl" || s == "org.openrndr.color.hsv"
         }
 
-        fun ValueParameterDescriptor.isAlpha(): Boolean =
+        private fun ValueParameterDescriptor.isAlpha(): Boolean =
             name.identifier == "alpha" || name.identifier == "a" && isColorModelShorthand()
 
         fun ValueParameterDescriptor.isRef(): Boolean = name.identifier == "ref"
 
-        fun ValueParameterDescriptor.isLinearity(): Boolean = name.identifier == "linearity"
+        private fun ValueParameterDescriptor.isLinearity(): Boolean = name.identifier == "linearity"
 
         fun ValueParameterDescriptor.getDefaultValueIfKnown(): ConstantValueContainer<*>? {
             if (!hasDefaultValue()) return null
