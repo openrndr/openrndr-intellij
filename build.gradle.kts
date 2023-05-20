@@ -4,7 +4,9 @@ import org.jetbrains.changelog.markdownToHTML
 // Largely based on intellij-platform-plugin-template
 // https://github.com/JetBrains/intellij-platform-plugin-template/blob/main/build.gradle.kts
 
-@Suppress("DSL_SCOPE_VIOLATION")
+fun properties(key: String) = providers.gradleProperty(key)
+fun environment(key: String) = providers.environmentVariable(key)
+
 plugins {
     java
     alias(libs.plugins.kotlin.jvm)
@@ -14,7 +16,7 @@ plugins {
 }
 
 group = "org.openrndr.plugin.intellij"
-version = "1.1.1"
+version = properties("pluginVersion").get()
 
 repositories {
     mavenCentral()
@@ -34,19 +36,19 @@ kotlin {
 // Configure Gradle IntelliJ Plugin
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
-    pluginName.set(findProperty("pluginName").toString())
+    pluginName = properties("pluginName")
     // https://www.jetbrains.com/intellij-repository/releases/
     // https://www.jetbrains.com/intellij-repository/snapshots/
-    version.set("222.4554.10")
-    type.set("IC") // Target IDE Platform
+    version = "222.4554.10"
+    type = "IC" // Target IDE Platform
 
-    plugins.set(listOf("com.intellij.java", "org.jetbrains.kotlin"))
+    plugins = listOf("com.intellij.java", "org.jetbrains.kotlin")
 }
 
 // Configure Gradle Changelog Plugin - read more: https://github.com/JetBrains/gradle-changelog-plugin
 changelog {
-    groups.set(listOf("Added", "Changed", "Removed", "Fixed"))
-    repositoryUrl.set("https://github.com/openrndr/openrndr-intellij")
+    groups = listOf("Added", "Changed", "Removed", "Fixed")
+    repositoryUrl = "https://github.com/openrndr/openrndr-intellij"
 }
 
 // Configure Gradle Kover Plugin - read more: https://github.com/Kotlin/kotlinx-kover#configuration
@@ -65,7 +67,6 @@ tasks {
         gradleVersion = "8.1.1"
     }
 
-    @Suppress("UNUSED_VARIABLE")
     val test by getting(Test::class) {
         systemProperties(
             // This should always be an absolute path
@@ -81,47 +82,49 @@ tasks {
     }
 
     patchPluginXml {
-        version.set(project.version.toString())
-        sinceBuild.set("222")
+        version = properties("pluginVersion")
+        sinceBuild = "222"
         // No restrictions on compatible IDE versions
-        untilBuild.set("")
-        // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest
-        pluginDescription.set(
-            file("README.md").readText().lines().run {
-                val start = "<!-- Plugin description -->"
-                val end = "<!-- Plugin description end -->"
+        untilBuild = ""
 
+        // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest
+        pluginDescription = providers.fileContents(layout.projectDirectory.file("README.md")).asText.map {
+            val start = "<!-- Plugin description -->"
+            val end = "<!-- Plugin description end -->"
+
+            with(it.lines()) {
                 if (!containsAll(listOf(start, end))) {
                     throw GradleException("Plugin description section not found in README.md:\n$start ... $end")
                 }
-                subList(indexOf(start) + 1, indexOf(end))
-            }.joinToString("\n").let { markdownToHTML(it) }
-        )
+                subList(indexOf(start) + 1, indexOf(end)).joinToString("\n").let(::markdownToHTML)
+            }
+        }
 
         val changelog = project.changelog // local variable for configuration cache compatibility
         // Get the latest available change notes from the changelog file
-        changeNotes.set(provider {
+        changeNotes = properties("pluginVersion").map { pluginVersion ->
             with(changelog) {
                 renderItem(
-                    getOrNull(project.version.toString()) ?: getLatest(),
+                    (getOrNull(pluginVersion) ?: getUnreleased()).withHeader(false).withEmptySections(false),
                     Changelog.OutputType.HTML,
                 )
             }
-        })
+        }
     }
 
     signPlugin {
-        certificateChain.set(System.getenv("CERTIFICATE_CHAIN"))
-        privateKey.set(System.getenv("PRIVATE_KEY"))
-        password.set(System.getenv("PRIVATE_KEY_PASSWORD"))
+        certificateChain = environment("CERTIFICATE_CHAIN")
+        privateKey = environment("PRIVATE_KEY")
+        password = environment("PRIVATE_KEY_PASSWORD")
     }
 
     publishPlugin {
         dependsOn("patchChangelog")
-        token.set(System.getenv("PUBLISH_TOKEN"))
-        // pluginVersion is based on the SemVer (https://semver.org) and supports pre-release labels, like 2.1.7-alpha.3
+        token = environment("PUBLISH_TOKEN")
+        // The pluginVersion is based on the SemVer (https://semver.org) and supports pre-release labels, like 2.1.7-alpha.3
         // Specify pre-release label to publish the plugin in a custom Release Channel automatically. Read more:
         // https://plugins.jetbrains.com/docs/intellij/deployment.html#specifying-a-release-channel
-        channels.set(listOf(version.toString().split('-').getOrElse(1) { "default" }.split('.').first()))
+        channels =
+            properties("pluginVersion").map { listOf(it.split('-').getOrElse(1) { "default" }.split('.').first()) }
     }
 }
