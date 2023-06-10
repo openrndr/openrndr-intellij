@@ -15,6 +15,7 @@ import com.sun.jdi.DoubleValue
 import com.sun.jdi.ObjectReference
 import com.sun.jdi.Type
 import org.openrndr.plugin.intellij.ui.RoundColorIcon
+import org.openrndr.plugin.intellij.utils.ColorUtil.colorRGBaFieldNames
 import java.awt.Color
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
@@ -26,7 +27,6 @@ class ColorRGBaRendererProvider : CompoundRendererProvider() {
         const val PACKAGE_NAME = "org.openrndr.color"
         const val COLOR_MODEL_NAME = "$PACKAGE_NAME.ColorModel"
         const val COLORRGBA_NAME = "$PACKAGE_NAME.ColorRGBa"
-        val colorRGBaFieldNames = arrayOf("r", "g", "b", "alpha")
     }
 
     override fun getName(): String = "ColorRGBa"

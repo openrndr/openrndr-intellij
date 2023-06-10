@@ -4,8 +4,8 @@ import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.TestLookupElementPresentation
 import org.openrndr.plugin.intellij.ColorRGBaTestCase
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider
 import org.openrndr.plugin.intellij.ui.RoundColorIcon
+import org.openrndr.plugin.intellij.utils.ColorUtil.staticColorMap
 
 @TestDataPath("\$PROJECT_ROOT/testData/completion")
 class ColorRGBaCompletionContributorTest : ColorRGBaTestCase() {
@@ -17,11 +17,11 @@ class ColorRGBaCompletionContributorTest : ColorRGBaTestCase() {
     }
 
     fun testStaticColorRGBaCompletion() {
-        val staticColorPairs = myFixture.completeBasic().filter { it.lookupString in ColorRGBaColorProvider.staticColorMap }
+        val staticColorPairs = myFixture.completeBasic().filter { it.lookupString in staticColorMap }
             .map { it.lookupString to (LookupElementPresentation.renderElement(it).icon as RoundColorIcon).color }
         assertNotEmpty(staticColorPairs)
         staticColorPairs.forEach { (name, color) ->
-            assertEquals(ColorRGBaColorProvider.staticColorMap[name], color)
+            assertEquals(staticColorMap[name], color)
         }
     }
 

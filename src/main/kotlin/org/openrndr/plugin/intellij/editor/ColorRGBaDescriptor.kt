@@ -1,7 +1,6 @@
 package org.openrndr.plugin.intellij.editor
 
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
-import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.resolve.constants.DoubleValue
 import org.jetbrains.kotlin.resolve.constants.IntValue
 import org.jetbrains.kotlin.resolve.constants.StringValue
@@ -9,16 +8,15 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.jetbrains.kotlin.utils.threadLocal
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toColorRGBa
+import org.openrndr.plugin.intellij.utils.ArgumentMap
+import org.openrndr.plugin.intellij.utils.ColorUtil.defaultColorRGBa
+import org.openrndr.plugin.intellij.utils.ColorUtil.toAWTColor
+import org.openrndr.plugin.intellij.utils.ColorUtil.toColorRGBa
+import org.openrndr.plugin.intellij.utils.colorComponents
 import java.awt.Color
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
-
-internal typealias ArgumentMap = Map<ValueParameterDescriptor, ConstantValueContainer<*>>
-
-private val defaultColorRGBa = ColorRGBa(1.0, 1.0, 1.0, 1.0, Linearity.UNKNOWN)
 
 internal enum class ColorRGBaDescriptor {
     FromHex {
@@ -282,13 +280,5 @@ internal enum class ColorRGBaDescriptor {
         private fun DoubleArray.formatNumbers() = Array<String>(size) {
             decimalFormat.format(this[it])
         }
-
-        /**
-         * @return all constant [Double]s in the map in canonical order.
-         */
-        val ArgumentMap.colorComponents: List<Double>
-            get() = toList().sortedBy { it.first.index }.mapNotNull {
-                ((it.second as? ConstantValueContainer.Constant)?.value as? DoubleValue)?.value
-            }
     }
 }

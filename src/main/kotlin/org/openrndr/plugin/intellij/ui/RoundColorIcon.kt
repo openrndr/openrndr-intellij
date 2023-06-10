@@ -15,10 +15,10 @@ data class RoundColorIcon(val color: Color, val size: Int, val colorSize: Int) :
     private val sizeScaled = scaleVal(size.toDouble())
     private val colorSizeScaled = scaleVal(colorSize.toDouble())
     private val arcDiameter = (colorSizeScaled / 2.0).toInt()
+    private val offset = ((sizeScaled - colorSizeScaled) / 2.0).toInt()
+    private val innerSize = ceil(colorSizeScaled).toInt()
 
     override fun paintIcon(component: Component, graphics: Graphics, x: Int, y: Int) {
-        val offset = ((sizeScaled - colorSizeScaled) / 2.0).toInt()
-        val innerSize = ceil(colorSizeScaled).toInt()
         with(graphics as Graphics2D) {
             GraphicsConfig(this).setupAAPainting().also {
                 color = this@RoundColorIcon.color

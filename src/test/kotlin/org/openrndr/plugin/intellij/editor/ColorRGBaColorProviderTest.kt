@@ -8,10 +8,9 @@ import org.openrndr.color.*
 import org.openrndr.extra.color.presets.HOT_PINK
 import org.openrndr.extra.color.spaces.ColorOKLABa
 import org.openrndr.plugin.intellij.ColorRGBaTestCase
-import org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider.Companion.toAWTColor
+import org.openrndr.plugin.intellij.utils.ColorUtil.toAWTColor
 import java.awt.Color
 
-@Suppress("UseJBColor")
 class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
     private fun assertGutterIconColor(
         expected: Color, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") colorRGBaColor: String
