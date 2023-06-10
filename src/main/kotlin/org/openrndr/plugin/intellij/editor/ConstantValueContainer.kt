@@ -1,6 +1,5 @@
 package org.openrndr.plugin.intellij.editor
 
-import org.jetbrains.kotlin.descriptors.ValueDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -9,10 +8,11 @@ import org.jetbrains.kotlin.resolve.calls.components.hasDefaultValue
 import org.jetbrains.kotlin.resolve.constants.ConstantValue
 import org.jetbrains.kotlin.resolve.constants.DoubleValue
 import org.jetbrains.kotlin.resolve.constants.EnumValue
-import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
-import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.ColorXYZa
 import org.openrndr.color.Linearity
+import org.openrndr.plugin.intellij.utils.DescriptorUtil.isAlpha
+import org.openrndr.plugin.intellij.utils.DescriptorUtil.isLinearity
+import org.openrndr.plugin.intellij.utils.DescriptorUtil.isRef
 
 internal sealed class ConstantValueContainer<out T> {
     class Constant<out T>(val value: ConstantValue<T>) : ConstantValueContainer<T>()
@@ -27,18 +27,6 @@ internal sealed class ConstantValueContainer<out T> {
                 Name.identifier(Linearity.UNKNOWN.name)
             )
         )
-
-        private fun ValueDescriptor.isColorModelShorthand(): Boolean {
-            val s = containingDeclaration.getImportableDescriptor().fqNameSafe.asString()
-            return s == "org.openrndr.color.rgb" || s == "org.openrndr.color.hsl" || s == "org.openrndr.color.hsv"
-        }
-
-        private fun ValueParameterDescriptor.isAlpha(): Boolean =
-            name.identifier == "alpha" || name.identifier == "a" && isColorModelShorthand()
-
-        fun ValueParameterDescriptor.isRef(): Boolean = name.identifier == "ref"
-
-        private fun ValueParameterDescriptor.isLinearity(): Boolean = name.identifier == "linearity"
 
         fun ValueParameterDescriptor.getDefaultValueIfKnown(): ConstantValueContainer<*>? {
             if (!hasDefaultValue()) return null
