@@ -66,10 +66,22 @@ class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
     }
 
     fun testColorRGBaFromHex() {
-        assertGutterIconColor(ColorRGBa.MAGENTA.toAWTColor(), "ColorRGBa.fromHex(\"#f0f\")")
         assertGutterIconColor(ColorRGBa.MAGENTA.toAWTColor(), "ColorRGBa.fromHex(\"#ff00ff\")")
+    }
+
+    fun testColorRGBaFromHexShorthand() {
+        assertGutterIconColor(ColorRGBa.MAGENTA.toAWTColor(), "ColorRGBa.fromHex(\"#f0f\")")
+    }
+
+    fun testColorRGBaFromHexAlpha() {
         assertGutterIconColor(ColorRGBa.fromHex("#ff00ff7f").toAWTColor(), "ColorRGBa.fromHex(\"#ff00ff7f\")")
+    }
+
+    fun testColorRGBaFromHexAlphaShorthand() {
         assertGutterIconColor(ColorRGBa.fromHex("#3037").toAWTColor(), "ColorRGBa.fromHex(\"#3037\")")
+    }
+
+    fun testColorRGBaFromHexInt() {
         assertGutterIconColor(ColorRGBa.YELLOW.toAWTColor(), "ColorRGBa.fromHex(0xffff00)")
     }
 
