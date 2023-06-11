@@ -5,7 +5,8 @@
 ### Added
 
 ### Changed
-- Update Kotlin to 1.8.21
+- Update Kotlin to 1.8.22
+- Update OPENRNDR/ORX to 0.4.3
 
 ### Removed
 
