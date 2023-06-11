@@ -91,7 +91,7 @@ jobs:
           path: ${{ github.workspace }}/build/reports/tests
 
       - name: Add coverage report to PR
-        uses: mi-kas/kover-report@v1.5
+        uses: mi-kas/kover-report@v1.6
         if: github.event_name == 'pull_request'
         with:
           path: ${{ github.workspace }}/build/reports/kover/report.xml
