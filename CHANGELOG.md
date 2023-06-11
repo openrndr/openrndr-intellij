@@ -5,10 +5,16 @@
 ### Added
 
 ### Changed
-- Update Kotlin to 1.8.22
-- Update OPENRNDR/ORX to 0.4.3
 
 ### Removed
+
+### Fixed
+
+## [1.1.2] - 2023-06-11
+
+### Changed
+- Update Kotlin to 1.8.22
+- Update OPENRNDR/ORX to 0.4.3
 
 ### Fixed
 - Refactor extensions from `object` to `class` to avoid issues with Kotlin 
@@ -40,7 +46,8 @@
 - ColorRGBa preview in debugger and expression evaluation dialog
 - ColorRGBa preview in the auto-completion dialog
 
-[Unreleased]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/openrndr/openrndr-intellij/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/openrndr/openrndr-intellij/compare/v1.0.0...v1.0.1
