@@ -35,11 +35,11 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Validate wrapper
       - name: Gradle Wrapper Validation
-        uses: gradle/wrapper-validation-action@v1.0.6
+        uses: gradle/wrapper-validation-action@v1
 
       # TODO: Fetch version number for regex from gradle properties
       - name: Find latest tag for given IntelliJ version
@@ -50,7 +50,7 @@ jobs:
           regex: ^idea\/222\.4554(?:\.\d+)?$
 
       - name: Checkout intellij-community repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
           repository: JetBrains/intellij-community
@@ -91,7 +91,7 @@ jobs:
           path: ${{ github.workspace }}/build/reports/tests
 
       - name: Add coverage report to PR
-        uses: mi-kas/kover-report@v1.6
+        uses: mi-kas/kover-report@v1.7
         if: github.event_name == 'pull_request'
         with:
           path: ${{ github.workspace }}/build/reports/kover/report.xml
@@ -147,7 +147,7 @@ jobs:
 
       # Check out current repository
       - name: Fetch Sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Remove old release drafts by using the curl request for the available releases with a draft flag
       - name: Remove Old Release Drafts
