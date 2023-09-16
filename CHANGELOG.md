@@ -5,6 +5,8 @@
 ### Added
 
 ### Changed
+- Update Kotlin to 1.9.10
+- Update gradle-intellij-plugin to 1.15.0
 
 ### Removed
 
