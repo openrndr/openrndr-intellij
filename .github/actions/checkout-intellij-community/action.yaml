@@ -1,0 +1,27 @@
+name: Checkout intellij-community
+description: Checkout intellij-community repository with the correct tag
+
+inputs:
+  path:
+    description: Path where to checkout the repository
+    default: intellij-community
+    required: false
+
+runs:
+  using: composite
+  steps:
+    # TODO: Fetch version number for regex from gradle properties
+    - name: Find latest tag for given IntelliJ version
+      uses: oprypin/find-latest-tag@v1.1.1
+      id: intellij-tag
+      with:
+        repository: JetBrains/intellij-community
+        regex: ^idea\/222\.4554(?:\.\d+)?$
+
+    - name: Checkout intellij-community repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        repository: JetBrains/intellij-community
+        ref: ${{ steps.intellij-tag.outputs.tag }}
+        path: ${{ inputs.path }}
