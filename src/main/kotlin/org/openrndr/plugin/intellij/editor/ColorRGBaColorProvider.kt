@@ -84,6 +84,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
                 val ref =
                     argumentMap?.firstNotNullOfOrNull { it.takeIf { (p, _) -> p.isRef() }?.value } as? ConstantValueContainer.WhitePoint
                 val colorArguments = colorRGBaDescriptor.argumentsFromColor(color, ref?.value)
+                @Suppress("SimpleRedundantLet")
                 outerExpression.getChildOfType<KtValueArgumentList>()?.let {
                     it.replace(it.constructReplacement(resolvedCall.valueArguments, colorArguments))
                 } ?: outerExpression.getChildOfType<KtCallExpression>()?.let {
@@ -107,7 +108,7 @@ class ColorRGBaColorProvider : ElementColorProvider {
     private fun KtValueArgumentList.constructReplacement(
         resolvedArgumentMap: Map<ValueParameterDescriptor, ResolvedValueArgument>, replacementArguments: Array<String>
     ): KtValueArgumentList {
-        val psiFactory = KtPsiFactory(this)
+        val psiFactory = KtPsiFactory.contextual(this, true)
 
         // It handles overloads where the resolved function call is not the one we want anymore
         // because it is incapable of expressing the desired color accurately, such as `rgb` with 2 arguments.
