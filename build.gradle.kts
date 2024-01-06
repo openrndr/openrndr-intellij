@@ -64,7 +64,7 @@ val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community
 
 tasks {
     wrapper {
-        gradleVersion = "8.3"
+        gradleVersion = "8.5"
     }
 
     val test by getting(Test::class) {
