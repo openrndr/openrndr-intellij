@@ -10,7 +10,7 @@ import com.intellij.codeInsight.lookup.LookupElementRenderer
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.scale.JBUIScale
 import org.jetbrains.kotlin.descriptors.ValueDescriptor
-import org.jetbrains.kotlin.idea.core.completion.DeclarationLookupObject
+import org.jetbrains.kotlin.idea.core.completion.DescriptorBasedDeclarationLookupObject
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDeclarationWithInitializer
 import org.openrndr.plugin.intellij.ui.RoundColorIcon
@@ -22,7 +22,7 @@ class ColorRGBaCompletionContributor : CompletionContributor() {
     override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {
         result.runRemainingContributors(parameters) { completionResult ->
             val element = completionResult.lookupElement
-            val lookupObject = element.`object` as? DeclarationLookupObject
+            val lookupObject = element.`object` as? DescriptorBasedDeclarationLookupObject
             val descriptor = (lookupObject?.descriptor as? ValueDescriptor)?.takeIf { it.isColorModelPackage() }
                 ?: return@runRemainingContributors result.passResult(completionResult)
             val decoratedLookupElement = element.decorateWithIcon(descriptor)

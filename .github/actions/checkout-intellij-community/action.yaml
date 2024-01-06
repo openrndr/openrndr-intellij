@@ -16,7 +16,7 @@ runs:
       id: intellij-tag
       with:
         repository: JetBrains/intellij-community
-        regex: ^idea\/222\.4554(?:\.\d+)?$
+        regex: ^idea\/232\.10227(?:\.\d+)?$
 
     - name: Checkout intellij-community repository
       uses: actions/checkout@v4

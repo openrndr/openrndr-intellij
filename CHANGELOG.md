@@ -5,8 +5,10 @@
 ### Added
 
 ### Changed
-- Update Kotlin to 1.9.10
-- Update gradle-intellij-plugin to 1.15.0
+- Update Kotlin to 1.9.22
+- Update gradle-intellij-plugin to 1.16.1
+- Update OPENRNDR/ORX to 0.4.4
+- Raise minimum supported IntelliJ version to 2023.2 due to https://youtrack.jetbrains.com/issue/KT-58021
 
 ### Removed
 

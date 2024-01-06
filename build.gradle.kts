@@ -39,7 +39,7 @@ intellij {
     pluginName = properties("pluginName")
     // https://www.jetbrains.com/intellij-repository/releases/
     // https://www.jetbrains.com/intellij-repository/snapshots/
-    version = "222.4554.10"
+    version = "232.10227.8"
     type = "IC" // Target IDE Platform
 
     plugins = listOf("com.intellij.java", "org.jetbrains.kotlin")
@@ -64,7 +64,7 @@ val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community
 
 tasks {
     wrapper {
-        gradleVersion = "8.3"
+        gradleVersion = "8.5"
     }
 
     val test by getting(Test::class) {
@@ -83,7 +83,7 @@ tasks {
 
     patchPluginXml {
         version = properties("pluginVersion")
-        sinceBuild = "222"
+        sinceBuild = "232"
         // No restrictions on compatible IDE versions
         untilBuild = ""
 
