@@ -73,7 +73,6 @@ tasks {
             "idea.home.path" to (System.getenv("INTELLIJ_SOURCES") ?: defaultIntellijSourcesPath),
             "version_used_for.openrndr" to libs.versions.openrndr.get(),
             "version_used_for.orx" to libs.versions.orx.get(),
-            "version_used_for.kotlin" to libs.versions.kotlin.get()
         )
     }
 
