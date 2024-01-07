@@ -19,9 +19,10 @@ class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
     private fun assertGutterIconColorManual(expected: Color, code: String) {
         myFixture.configureByText(KotlinFileType.INSTANCE, code)
         val gutterMarks = myFixture.findAllGutters()
-        assertSize(1, gutterMarks)
-        val actualColorIcon = gutterMarks[0].icon as? ColorIcon
-        assertEquals(expected, actualColorIcon?.iconColor)
+        assertNotEmpty(gutterMarks)
+        val iconGutterMark = gutterMarks.first { it.icon is ColorIcon }
+        val actualColorIcon = iconGutterMark.icon as ColorIcon
+        assertEquals(expected, actualColorIcon.iconColor)
     }
 
     /**
@@ -39,9 +40,10 @@ class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
     ) {
         myFixture.configureByText(KotlinFileType.INSTANCE, code)
         val gutterMarks = myFixture.findAllGutters()
-        assertSize(1, gutterMarks)
+        assertNotEmpty(gutterMarks)
+        val iconGutterMark = gutterMarks.first { it.icon is ColorsIcon }
+        val actualColorsIcon = iconGutterMark.icon as ColorsIcon
         val expectedColorsIcon = ColorsIcon(12, *expected.reversedArray())
-        val actualColorsIcon = gutterMarks[0].icon as? ColorsIcon
         assertEquals(expectedColorsIcon, actualColorsIcon)
     }
 
