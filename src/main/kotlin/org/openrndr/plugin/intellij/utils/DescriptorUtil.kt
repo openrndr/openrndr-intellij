@@ -16,6 +16,10 @@ import org.openrndr.plugin.intellij.editor.ConstantValueContainer.Companion.getD
 
 internal object DescriptorUtil {
     private fun ValueDescriptor.isColorModelShorthand(): Boolean {
+        // 'val KotlinType.fqName: FqName?' is deprecated.
+        // Only supported for Kotlin Plugin K1 mode.
+        // Use Kotlin Analysis API instead, which works for both K1 and K2 modes.
+        // See https://kotl.in/analysis-api and `org.jetbrains.kotlin.analysis.api.analyze` for details.
         val s = containingDeclaration.getImportableDescriptor().fqNameSafe.asString()
         return s == "org.openrndr.color.rgb" || s == "org.openrndr.color.hsl" || s == "org.openrndr.color.hsv"
     }

@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.resolve.calls.model.ResolvedValueArgument
 import org.jetbrains.kotlin.resolve.calls.tower.NewAbstractResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getCall
 import org.jetbrains.kotlin.resolve.calls.util.getResolvedCall
-import org.openrndr.color.ColorRGBa
 import org.openrndr.color.ReferenceWhitePoint
 import org.openrndr.plugin.intellij.OpenrndrBundle
 import org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor
