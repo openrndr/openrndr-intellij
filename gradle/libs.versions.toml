@@ -1,13 +1,13 @@
 [versions]
-openrndr = "0.4.4"
-orx = "0.4.4"
+openrndr = "0.4.5"
+orx = "0.4.5"
 
 #plugins
-changelog = "2.2.1"
+changelog = "2.5.0"
 intelliJPlatform = "2.6.0"
-kotlin = "2.2.0"
-kover = "0.9.1"
-versions = "0.52.0"
+kotlin = "2.4.0"
+kover = "0.9.8"
+versions = "0.54.0"
 
 [libraries]
 openrndr-color = { group = "org.openrndr", name = "openrndr-color", version.ref = "openrndr" }
