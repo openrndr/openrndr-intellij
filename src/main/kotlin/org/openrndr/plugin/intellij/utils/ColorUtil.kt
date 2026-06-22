@@ -21,6 +21,7 @@ import org.openrndr.color.ColorXYZa
 import org.openrndr.color.Linearity
 import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor
 import java.awt.Color
+import java.lang.reflect.Modifier
 import kotlin.reflect.full.memberProperties
 
 
@@ -55,11 +56,20 @@ internal object ColorUtil {
         for (property in ColorXYZa.Companion::class.memberProperties) {
             this[property.name] = (property.getter.call(ColorXYZa.Companion) as ColorXYZa).toAWTColor()
         }
-        // There's no easy way to get the ColorRGBa extension properties in orx, we have to use Java reflection
+        // There's no easy way to get the ColorRGBa extension properties in orx, we have to use Java reflection.
+        // Each preset is a lazy-delegated extension property, so orx compiles it into BOTH a public getter
+        // `getNAME(ColorRGBa.Companion): ColorRGBa` AND a `private static` lazy-initializer lambda
+        // (`NAME_delegate$lambda$N()`). We must invoke only the public getters: invoking a private lambda throws
+        // IllegalAccessException (and it takes no args anyway). Older orx emitted those lambdas as separate
+        // synthetic classes, so the unfiltered loop happened to work before the dependency bump.
+        val companionClass = ColorRGBa.Companion::class.java
         val extensionColorsJavaClass = Class.forName("org.openrndr.extra.color.presets.ColorsKt")
         for (method in extensionColorsJavaClass.declaredMethods) {
+            if (!Modifier.isPublic(method.modifiers)) continue
+            if (method.returnType != ColorRGBa::class.java) continue
+            if (method.parameterCount != 1 || method.parameterTypes[0] != companionClass) continue
             this[method.name.removePrefix("get")] =
-                (method.invoke(ColorRGBa::javaClass, ColorRGBa.Companion) as ColorRGBa).toAWTColor()
+                (method.invoke(null, ColorRGBa.Companion) as ColorRGBa).toAWTColor()
         }
     }
 
