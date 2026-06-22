@@ -51,7 +51,14 @@ dependencies {
 
         //bundledPlugin("com.intellij.java")
         //bundledPlugin("org.jetbrains.kotlin")
+
+        // Test framework required for BasePlatformTestCase/myFixture (IntelliJ Platform Gradle Plugin 2.x).
+        // The Java framework supplies IdeaTestUtil and DefaultLightProjectDescriptor used by the tests.
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java)
     }
+
+    testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {
@@ -148,6 +155,11 @@ tasks {
             "version_used_for.openrndr" to libs.versions.openrndr.get(),
             "version_used_for.orx" to libs.versions.orx.get(),
         )
+        // Run the test fixtures in the Kotlin K2 (Analysis API) plugin mode by default; override with
+        // -PuseK2=false to exercise K1 mode instead. The plugin code itself is mode-agnostic.
+        systemProperty("idea.kotlin.plugin.use.k2", providers.gradleProperty("useK2").orElse("true").get())
+        // The IntelliJ test fixtures (especially in K2 mode) are memory hungry.
+        maxHeapSize = "2g"
     }
 
     dependencyUpdates {

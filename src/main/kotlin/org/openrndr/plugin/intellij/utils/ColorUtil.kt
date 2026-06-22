@@ -4,25 +4,22 @@ import com.intellij.patterns.PlatformPatterns.*
 import com.intellij.patterns.PsiElementPattern
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
-import org.jetbrains.kotlin.idea.references.SyntheticPropertyAccessorReference
+import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
+import org.jetbrains.kotlin.analysis.api.resolution.successfulVariableAccessCall
+import org.jetbrains.kotlin.analysis.api.resolution.symbol
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfTypes2
-import org.jetbrains.kotlin.resolve.calls.model.KotlinCallKind
-import org.jetbrains.kotlin.resolve.calls.tower.NewAbstractResolvedCall
-import org.jetbrains.kotlin.resolve.calls.util.getResolvedCall
-import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.openrndr.color.ColorModel
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.ColorXYZa
 import org.openrndr.color.Linearity
 import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor
-import org.openrndr.plugin.intellij.utils.DescriptorUtil.computeValueArguments
-import org.openrndr.plugin.intellij.utils.DescriptorUtil.isColorModelPackage
 import java.awt.Color
 import kotlin.reflect.full.memberProperties
 
@@ -30,7 +27,7 @@ import kotlin.reflect.full.memberProperties
 @Suppress("UseJBColor")
 internal object ColorUtil {
     val colorRGBaFieldNames = arrayOf("r", "g", "b", "alpha")
-    val defaultColorRGBa = ColorRGBa(1.0, 1.0, 1.0, 1.0, Linearity.UNKNOWN)
+    val defaultColorRGBa = ColorRGBa(1.0, 1.0, 1.0, 1.0, Linearity.LINEAR)
 
     fun ColorModel<*>.toAWTColor(): Color = toRGBa().run {
         Color(
@@ -41,7 +38,7 @@ internal object ColorUtil {
         )
     }
 
-    fun Color.toColorRGBa(linearity: Linearity = Linearity.UNKNOWN) = getComponents(null).let { (r, g, b, a) ->
+    fun Color.toColorRGBa(linearity: Linearity = Linearity.LINEAR) = getComponents(null).let { (r, g, b, a) ->
         ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
     }
 
@@ -77,35 +74,43 @@ internal object ColorUtil {
         if (this !is LeafPsiElement) return null
         if (!COLOR_PROVIDER_PATTERN.accepts(this)) return null
         val outerExpression = getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression
-        val outerExpressionContext = outerExpression?.analyze() ?: return null
-        val resolvedCall = outerExpression.getResolvedCall(outerExpressionContext) as? NewAbstractResolvedCall
-        val descriptor = resolvedCall?.resultingDescriptor
+            ?: return null
+        return analyze(outerExpression) {
+            val callInfo = outerExpression.resolveToCall() ?: return@analyze null
 
-        if (descriptor?.isColorModelPackage() != true) return null
-        if (resolvedCall.kotlinCall?.callKind == KotlinCallKind.VARIABLE) {
-            return staticColorMap[descriptor.getImportableDescriptor().name.identifier]
+            // Static color, e.g. `ColorRGBa.RED`, resolved as a variable (property) access.
+            callInfo.successfulVariableAccessCall()?.let { variableAccess ->
+                val symbol = variableAccess.symbol
+                if (!isColorModelSymbol(symbol)) return@analyze null
+                return@analyze staticColorMap[symbol.name.identifier]
+            }
+
+            // Function or constructor call, e.g. `ColorRGBa(...)`, `rgb(...)`, `ColorRGBa.fromHex(...)`.
+            val functionCall = callInfo.successfulFunctionCallOrNull() ?: return@analyze null
+            val symbol = functionCall.symbol
+            if (!isColorModelSymbol(symbol)) return@analyze null
+            val descriptor = ColorRGBaDescriptor.fromCallableName(callableShortName(symbol)) ?: return@analyze null
+            val argumentMap = computeValueArguments(functionCall) ?: return@analyze null
+            descriptor.colorFromArguments(argumentMap)
         }
-
-        val argumentMap = resolvedCall.computeValueArguments(outerExpressionContext) ?: return null
-        val colorRGBaDescriptor = ColorRGBaDescriptor.fromCallableDescriptor(descriptor)
-        return colorRGBaDescriptor?.colorFromArguments(argumentMap)
     }
 
     private val COLOR_PROVIDER_PATTERN: PsiElementPattern.Capture<PsiElement> = psiElement(KtTokens.IDENTIFIER)
         // @formatter:off
+        // Exclude import statements (which are also dot qualified expressions). The K1 implementation used
+        // `.withReference(SyntheticPropertyAccessorReference)` to disambiguate, but that reference type is not
+        // produced in K2 mode, so we exclude imports structurally instead.
+        .andNot(psiElement().inside(KtImportDirective::class.java))
         .withParent(
             or(
                 /** Matches something like **ColorRGBa**.RED */
                 psiElement(KtNameReferenceExpression::class.java)
-                    // This disambiguates from import statements which are also dot qualified expressions
-                    .withReference(SyntheticPropertyAccessorReference::class.java)
                     .beforeLeaf(psiElement(KtTokens.DOT)
                         .beforeLeaf(psiElement(KtTokens.IDENTIFIER)
                             .beforeLeaf(not(psiElement(KtTokens.LPAR)))))
                     .withParent(KtDotQualifiedExpression::class.java),
                 /** Matches something like **ColorRGBa**(...) or ColorRGBa.**fromHex**(...) */
                 psiElement(KtNameReferenceExpression::class.java)
-                    .withReference(SyntheticPropertyAccessorReference::class.java)
                     .beforeLeaf(psiElement(KtTokens.LPAR))
                     .withParent(psiElement(KtCallExpression::class.java))
             )

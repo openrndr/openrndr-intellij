@@ -1,10 +1,5 @@
 package org.openrndr.plugin.intellij.editor
 
-import org.jetbrains.kotlin.descriptors.CallableDescriptor
-import org.jetbrains.kotlin.resolve.constants.DoubleValue
-import org.jetbrains.kotlin.resolve.constants.IntValue
-import org.jetbrains.kotlin.resolve.constants.StringValue
-import org.jetbrains.kotlin.resolve.descriptorUtil.getImportableDescriptor
 import org.jetbrains.kotlin.utils.threadLocal
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
@@ -36,9 +31,9 @@ internal enum class ColorRGBaDescriptor {
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
             val anyArgumentValue = argumentMap.values.firstOrNull() as? ConstantValueContainer.Constant
             return when (val firstValue = anyArgumentValue?.value) {
-                is IntValue -> ColorRGBa.fromHex(firstValue.value).toAWTColor()
-                is StringValue -> try {
-                    ColorRGBa.fromHex(firstValue.value).toAWTColor()
+                is Int -> ColorRGBa.fromHex(firstValue).toAWTColor()
+                is String -> try {
+                    ColorRGBa.fromHex(firstValue).toAWTColor()
                 } catch (_: Exception) {
                     null
                 }
@@ -57,7 +52,7 @@ internal enum class ColorRGBaDescriptor {
             // returns for us as we're only interested in knowing the type
             val anyArgumentValue = argumentMap.values.firstOrNull() as? ConstantValueContainer.Constant
             return when (val firstValue = anyArgumentValue?.value) {
-                is DoubleValue -> argumentMap.colorComponents.let {
+                is Double -> argumentMap.colorComponents.let {
                     // Alpha is always included so we only ever have either 2 or 4 components, but whatever
                     when (it.size) {
                         1 -> rgb(it[0])
@@ -67,8 +62,8 @@ internal enum class ColorRGBaDescriptor {
                         else -> null
                     }?.toAWTColor()
                 }
-                is StringValue -> try {
-                    ColorRGBa.fromHex(firstValue.value).toAWTColor()
+                is String -> try {
+                    ColorRGBa.fromHex(firstValue).toAWTColor()
                 } catch (_: Exception) {
                     null
                 }
@@ -204,8 +199,12 @@ internal enum class ColorRGBaDescriptor {
     abstract val defaultLinearity: Linearity
 
     companion object {
-        fun fromCallableDescriptor(targetDescriptor: CallableDescriptor): ColorRGBaDescriptor? {
-            return when (targetDescriptor.getImportableDescriptor().name.identifier) {
+        /**
+         * @param callableName the simple name of the resolved function/constructor, e.g. `fromHex`,
+         * `rgb`, or `ColorRGBa` (see [org.openrndr.plugin.intellij.utils.callableShortName]).
+         */
+        fun fromCallableName(callableName: String?): ColorRGBaDescriptor? {
+            return when (callableName) {
                 "fromHex" -> FromHex
                 "rgb" -> RGB
                 "ColorRGBa" -> ColorRGBaConstructor
@@ -259,10 +258,9 @@ internal enum class ColorRGBaDescriptor {
             var ref: ColorXYZa = ColorXYZa.NEUTRAL
             for ((_, constant) in components) {
                 when (constant) {
-                    is ConstantValueContainer.Constant -> if (constant.value is DoubleValue) {
-                        doubles.add(constant.value.value)
-                    }
+                    is ConstantValueContainer.Constant -> (constant.value as? Double)?.let { doubles.add(it) }
                     is ConstantValueContainer.WhitePoint -> ref = constant.value
+                    is ConstantValueContainer.Other -> {}
                 }
             }
             return when (doubles.size) {
