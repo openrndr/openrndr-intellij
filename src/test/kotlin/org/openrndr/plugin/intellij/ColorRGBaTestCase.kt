@@ -16,16 +16,26 @@ import org.openrndr.extra.color.spaces.ColorOKLABa
 import org.openrndr.math.Vector2
 import java.io.File
 
+/**
+ * Base class for the plugin's tests. It boots a light in-memory IntelliJ test fixture with the real openrndr
+ * jars on its classpath (see [PROJECT_DESCRIPTOR]), so the Kotlin Analysis API can resolve `ColorRGBa` and
+ * friends exactly as it would in a user's project.
+ *
+ * The `colorRGBaExpressionTemplate` helpers wrap a snippet of color code in a compilable file (with the
+ * openrndr color imports and a `main` function) so individual tests only need to write the expression under test.
+ */
 abstract class ColorRGBaTestCase : BasePlatformTestCase() {
     override fun getProjectDescriptor(): LightProjectDescriptor = PROJECT_DESCRIPTOR
 
     override fun getTestDataPath(): String = "testData"
 
+    /** Wraps [expression] in a `main` function inside an otherwise empty file with the openrndr imports. */
     @Language("kt")
     protected fun colorRGBaExpressionTemplate(
         @Language("kt", prefix = "fun main() {", suffix = "}") expression: String
     ): String = colorRGBaExpressionTemplate("", expression)
 
+    /** As above, but inserts [prelude] (extra top-level declarations such as `const val`s) before `main`. */
     @Language("kt")
     protected fun colorRGBaExpressionTemplate(
         @Language("kt") prelude: String, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") expression: String

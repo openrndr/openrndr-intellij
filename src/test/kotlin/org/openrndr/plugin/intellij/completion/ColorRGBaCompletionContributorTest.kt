@@ -7,6 +7,11 @@ import org.openrndr.plugin.intellij.ColorRGBaTestCase
 import org.openrndr.plugin.intellij.ui.RoundColorIcon
 import org.openrndr.plugin.intellij.utils.ColorUtil.staticColorMap
 
+/**
+ * Verifies that [org.openrndr.plugin.intellij.completion.ColorRGBaCompletionContributor] attaches color icons
+ * to completion items. Each test loads the matching `testData/completion/<testName>.kt` fixture, triggers
+ * completion, and asserts the resulting lookup items carry [RoundColorIcon]s of the expected colors.
+ */
 @TestDataPath("\$PROJECT_ROOT/testData/completion")
 class ColorRGBaCompletionContributorTest : ColorRGBaTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + "/completion"
@@ -16,6 +21,7 @@ class ColorRGBaCompletionContributorTest : ColorRGBaTestCase() {
         myFixture.configureByFile(getTestName(true) + ".kt")
     }
 
+    /** Static colors (e.g. `ColorRGBa.RED`) should get an icon eagerly, matching [staticColorMap]. */
     fun testStaticColorRGBaCompletion() {
         val staticColorPairs = myFixture.completeBasic().filter { it.lookupString in staticColorMap }
             .map { it.lookupString to (LookupElementPresentation.renderElement(it).icon as RoundColorIcon).color }
@@ -25,6 +31,7 @@ class ColorRGBaCompletionContributorTest : ColorRGBaTestCase() {
         }
     }
 
+    /** Color-typed local properties (`myVar0`..`myVar3`) should get an icon via the expensive (deferred) renderer. */
     fun testExpensiveColorRGBaCompletion() {
         val colorIcons = myFixture.completeBasic().filter { it.lookupString in "myVar0".."myVar3" }
             .map(TestLookupElementPresentation::renderReal)

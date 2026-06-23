@@ -13,7 +13,20 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.*
 
+/**
+ * Bridges a textual openrndr color expression and an AWT [Color], one enum constant per supported
+ * constructor / factory function (`ColorRGBa(...)`, `rgb(...)`, `ColorRGBa.fromHex(...)`, `ColorHSVa(...)`,
+ * every orx color space, …).
+ *
+ * Each constant knows how to go both ways:
+ *  - [colorFromArguments] turns the already-resolved call arguments into the [Color] shown in the gutter.
+ *  - [argumentsFromColor] turns a color the user picked back into the argument strings for that color model,
+ *    which the color picker writes into the source.
+ *
+ * The matching from a resolved call to a descriptor happens by simple name in [fromCallableName].
+ */
 internal enum class ColorRGBaDescriptor {
+    /** `ColorRGBa.fromHex(...)` — accepts a hex string (`"#ff00ff"`) or an `Int` literal (`0xff00ff`). */
     FromHex {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?): Array<String> {
             val hex = color.rgb.let {
@@ -43,6 +56,7 @@ internal enum class ColorRGBaDescriptor {
 
         override val defaultLinearity: Linearity = defaultColorRGBa.linearity
     },
+    /** The `rgb(...)` shorthand factory function: 1–4 doubles, or a hex string. */
     RGB {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
             argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toRGBa)
@@ -75,6 +89,10 @@ internal enum class ColorRGBaDescriptor {
     },
 
     // @formatter:off
+    // Below: one constant per color-model constructor. They all delegate to the `*Simple`/`*Ref` companion
+    // helpers, differing only in which openrndr conversion function they use and (for the `ColorXYZa?` ref
+    // models) whether they thread a reference white point through. The `argumentsFromColor`/`colorFromArguments`
+    // round-trip is intended to be lossless modulo floating-point error; see [defaultLinearity] for why.
     ColorRGBaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toRGBa)
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? = colorFromArgumentsSimple(argumentMap, ::ColorRGBa)
@@ -232,6 +250,11 @@ internal enum class ColorRGBaDescriptor {
             }
         }
 
+        /**
+         * Converts [color] into the four component strings of a target color model: take the AWT color into a
+         * [ColorRGBa] of the given [linearity], run [conversionFunction] to reach the target model, and format
+         * its `(c0, c1, c2, alpha)` vector. Used by every descriptor whose constructor takes plain components.
+         */
         fun argumentsFromColorSimple(
             color: Color, linearity: Linearity, conversionFunction: (ColorRGBa) -> ColorModel<*>
         ): Array<String> {
@@ -239,6 +262,11 @@ internal enum class ColorRGBaDescriptor {
             return colorVector.toDoubleArray().formatNumbers()
         }
 
+        /**
+         * Builds the [Color] for a component-based color model from its resolved arguments by feeding the 3
+         * (alpha defaulted to 1.0) or 4 [colorComponents][org.openrndr.plugin.intellij.utils.colorComponents]
+         * into [colorConstructor]. Returns `null` for any other argument count.
+         */
         fun colorFromArgumentsSimple(
             argumentMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
         ): Color? = argumentMap.colorComponents.let {
@@ -249,6 +277,11 @@ internal enum class ColorRGBaDescriptor {
             }?.toAWTColor()
         }
 
+        /**
+         * Like [colorFromArgumentsSimple] but for models that carry a reference white point (LAB, LCH, LUV, …).
+         * Separates the numeric components from the resolved `ref` white point in [argumentMap] and passes the
+         * white point (defaulting to [ColorXYZa.NEUTRAL]) to [colorConstructor] alongside the components.
+         */
         fun <T> colorFromArgumentsRef(
             argumentMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double, ColorXYZa) -> T
         ): Color? where T : ColorModel<T>, T : ReferenceWhitePoint {

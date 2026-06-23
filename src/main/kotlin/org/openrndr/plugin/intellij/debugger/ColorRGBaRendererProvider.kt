@@ -20,6 +20,17 @@ import java.awt.Color
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
+/**
+ * Shows a color swatch next to openrndr color values in the debugger's variables view.
+ *
+ * Unlike the editor features, the debugger has no source to analyze — it works against live values in the
+ * debuggee over JDI ([com.sun.jdi]). [getIsApplicableChecker] claims any value whose runtime type is in
+ * `org.openrndr.color` and implements `ColorModel`; [getIconRenderer] then reads that value's components
+ * (converting to `ColorRGBa` via a remote `toRGBa()` call first if it is some other color model) and renders
+ * a [RoundColorIcon] from them.
+ *
+ * Registered with `order="first"` so it wins over Kotlin's generic class renderer, which also claims ColorRGBa.
+ */
 @Suppress("UseJBColor")
 class ColorRGBaRendererProvider : CompoundRendererProvider() {
     private companion object {

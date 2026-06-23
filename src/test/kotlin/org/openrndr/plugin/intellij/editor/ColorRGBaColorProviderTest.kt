@@ -11,11 +11,22 @@ import org.openrndr.plugin.intellij.ColorRGBaTestCase
 import org.openrndr.plugin.intellij.utils.ColorUtil.toAWTColor
 import java.awt.Color
 
+/**
+ * Verifies that [org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider] produces the correct gutter color
+ * for the many ways a color can be written: static constants, the `ColorRGBa`/`rgb`/`fromHex` forms, every orx
+ * color model, named and defaulted arguments, constant-folded references, reference white points, and renamed
+ * imports. Each test renders a snippet into a fixture and asserts the gutter swatch's color.
+ *
+ * The `assertGutterIconColor*` helpers cover the single-swatch case (a [ColorIcon]); the `*MultiColor` variants
+ * cover lines that yield several swatches at once (a [ColorsIcon]), e.g. a color plus its reference white point.
+ */
 class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
+    /** Asserts the gutter swatch for the single color [colorRGBaColor] expression equals [expected]. */
     private fun assertGutterIconColor(
         expected: Color, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") colorRGBaColor: String
     ) = assertGutterIconColorManual(expected, colorRGBaExpressionTemplate(colorRGBaColor))
 
+    /** As [assertGutterIconColor] but takes the full source [code], for tests that need their own preamble. */
     private fun assertGutterIconColorManual(expected: Color, code: String) {
         myFixture.configureByText(KotlinFileType.INSTANCE, code)
         val gutterMarks = myFixture.findAllGutters()

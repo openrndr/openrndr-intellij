@@ -18,6 +18,16 @@ import org.openrndr.plugin.intellij.utils.ColorUtil
 import org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor
 import org.openrndr.plugin.intellij.utils.isColorModelType
 
+/**
+ * Adds a color swatch icon to code-completion items that name a color, so the autocomplete popup previews the
+ * actual color next to entries like `RED` or a locally-declared `val myColor = rgb(...)`.
+ *
+ * It does not generate completion items itself; it runs after the other contributors (registered `order="first,
+ * before KotlinCompletionContributor"`) and decorates the items they produce. Cheap items (static colors such
+ * as `ColorRGBa.RED`, whose color is already known via [ColorUtil.staticColorMap]) get their icon immediately;
+ * color-typed local properties get an [getExpensiveRenderer]-deferred icon so the file is only resolved when the
+ * item actually becomes visible.
+ */
 class ColorRGBaCompletionContributor : CompletionContributor() {
     override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {
         val file = parameters.originalFile as? KtFile
@@ -51,9 +61,17 @@ private fun collectColorPropertyNames(file: KtFile): Set<String> {
     }
 }
 
+/** Finds the property named [name] in [file], used to recover a declaration from a K2 lookup element that carries no PSI. */
 private fun KtFile.findColorProperty(name: String): KtProperty? =
     PsiTreeUtil.findChildrenOfType(this, KtProperty::class.java).firstOrNull { it.name == name }
 
+/**
+ * Wraps [this] lookup element so its rendering shows a [RoundColorIcon].
+ *
+ * For a known static color the icon is set directly in [renderElement]. For everything else the work is
+ * deferred to [getExpensiveRenderer]: it locates the named property's initializer call and resolves it with
+ * [resolveToColor], so colors of local `val`s are only computed for items the user actually sees.
+ */
 private fun LookupElement.decorateWithIcon(name: String, file: KtFile) =
     object : LookupElementDecorator<LookupElement>(this) {
         override fun renderElement(presentation: LookupElementPresentation) {

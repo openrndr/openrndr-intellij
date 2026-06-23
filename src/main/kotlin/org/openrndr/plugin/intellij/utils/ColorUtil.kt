@@ -25,11 +25,24 @@ import java.lang.reflect.Modifier
 import kotlin.reflect.full.memberProperties
 
 
+/**
+ * Central helpers for converting between openrndr colors and AWT [Color]s, and for deciding whether a piece
+ * of Kotlin source represents an openrndr color.
+ *
+ * The marquee function is [resolveToColor], which the gutter color provider, the completion contributor and
+ * the debugger renderer all rely on to answer "is this a color, and which one?". The reflection-built
+ * [staticColorMap] / [staticWhitePointMap] let us recognise named constants like `ColorRGBa.RED` without
+ * hardcoding them.
+ */
 @Suppress("UseJBColor")
 internal object ColorUtil {
+    /** The component field names of `ColorRGBa`, in source order; used to read color fields over JDI in the debugger. */
     val colorRGBaFieldNames = arrayOf("r", "g", "b", "alpha")
+
+    /** A reference opaque white used as the "neutral" starting color when computing default linearities. */
     val defaultColorRGBa = ColorRGBa(1.0, 1.0, 1.0, 1.0, Linearity.LINEAR)
 
+    /** Converts any openrndr color model to an AWT [Color], clamping each (sRGB) component into `[0, 1]`. */
     fun ColorModel<*>.toAWTColor(): Color = toRGBa().run {
         Color(
             r.toFloat().coerceIn(0f, 1f),
@@ -39,6 +52,7 @@ internal object ColorUtil {
         )
     }
 
+    /** Converts an AWT [Color] back into a [ColorRGBa] of the given [linearity] (sRGB by default). */
     fun Color.toColorRGBa(linearity: Linearity = Linearity.LINEAR) = getComponents(null).let { (r, g, b, a) ->
         ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
     }
@@ -73,6 +87,10 @@ internal object ColorUtil {
         }
     }
 
+    /**
+     * Name-to-white-point mapping of all static [ColorXYZa] constants (e.g. `SO10_D65`). Used to resolve the
+     * `ref` argument of reference-white-point color models when it is written as a named constant.
+     */
     val staticWhitePointMap: Map<String, ColorXYZa> = buildMap {
         // ColorXYZa static white points
         for (property in ColorXYZa.Companion::class.memberProperties) {
@@ -80,6 +98,14 @@ internal object ColorUtil {
         }
     }
 
+    /**
+     * The core "what color, if any, is this element?" entry point shared across the plugin.
+     *
+     * Returns `null` unless [this] is the identifier leaf of a color expression we recognise (gated cheaply by
+     * [COLOR_PROVIDER_PATTERN] before any expensive resolution). It then resolves the surrounding call inside an
+     * `analyze {}` block and produces a [Color] for either a static color constant (`ColorRGBa.RED`) or a
+     * constructor / factory call (`ColorRGBa(...)`, `rgb(...)`, `ColorRGBa.fromHex(...)`, every orx color model).
+     */
     fun PsiElement.resolveToColor(): Color? {
         if (this !is LeafPsiElement) return null
         if (!COLOR_PROVIDER_PATTERN.accepts(this)) return null
@@ -105,6 +131,12 @@ internal object ColorUtil {
         }
     }
 
+    /**
+     * A cheap, purely structural pre-filter run on every leaf before [resolveToColor] resolves anything.
+     * It matches the identifier of either a `Foo.BAR` static access or a `Foo(...)` / `Foo.bar(...)` call,
+     * while excluding import statements. Keeping resolution off the vast majority of leaves is what keeps the
+     * gutter color provider fast enough to run on every element in the file.
+     */
     private val COLOR_PROVIDER_PATTERN: PsiElementPattern.Capture<PsiElement> = psiElement(KtTokens.IDENTIFIER)
         // @formatter:off
         // Exclude import statements (which are also dot qualified expressions). The K1 implementation used

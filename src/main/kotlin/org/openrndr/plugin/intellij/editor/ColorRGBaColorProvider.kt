@@ -24,10 +24,30 @@ import org.openrndr.plugin.intellij.utils.resolvedColorArguments
 import org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor
 import java.awt.Color
 
+/**
+ * Drives the color gutter icon and color picker for openrndr color expressions in Kotlin code.
+ *
+ * IntelliJ calls [ElementColorProvider] for every leaf PSI element to ask two questions:
+ *  - [getColorFrom]: "does this element represent a color, and if so which one?" A non-null answer makes
+ *    IntelliJ render a clickable color swatch in the editor gutter.
+ *  - [setColorTo]: "the user picked a new color in the swatch's color picker — rewrite the source to match."
+ *
+ * The "what color is this expression" logic lives in [org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor];
+ * this class focuses on the harder direction — turning a chosen [Color] back into edited source code.
+ */
 class ColorRGBaColorProvider : ElementColorProvider {
 
+    /** Returns the color a gutter swatch should show for [element], or `null` if it is not a color expression. */
     override fun getColorFrom(element: PsiElement): Color? = element.resolveToColor()
 
+    /**
+     * Rewrites the color expression containing [element] so it evaluates to [color], invoked when the user
+     * picks a new color in the gutter swatch's color picker.
+     *
+     * Symbol resolution (the `analyze {}` block) and PSI mutation cannot happen together, so this is split
+     * in two: [computeReplacement] resolves the call into plain data while reading, then [applyReplacement]
+     * mutates the PSI inside a write command (so the edit is undoable as a single step).
+     */
     override fun setColorTo(element: PsiElement, color: Color) {
         if (element !is LeafPsiElement) return
         val project = element.project
@@ -86,6 +106,10 @@ class ColorRGBaColorProvider : ElementColorProvider {
         return null
     }
 
+    /**
+     * Mutates the PSI of [outerExpression] to apply [replacement]. Must be called from within a write command
+     * (see [setColorTo]); it performs no resolution, only the structural edits decided by [computeReplacement].
+     */
     private fun applyReplacement(outerExpression: KtExpression, replacement: ColorReplacement, project: Project) {
         val psiFactory = KtPsiFactory(project)
         when (replacement) {

@@ -6,6 +6,13 @@ import java.awt.*
 import kotlin.math.ceil
 
 /**
+ * A small rounded-square color swatch icon, used everywhere the plugin previews a color: the autocomplete
+ * popup and the debugger variables view. (The editor gutter uses IntelliJ's own [com.intellij.util.ui.ColorIcon]
+ * via the color provider.)
+ *
+ * Extends [JBCachingScalableIcon] so it renders crisply at any IDE display scale (HiDPI) and caches its scaled
+ * form. All sizes are scaled by [scaleVal] from the logical values below.
+ *
  * @param color color used for drawing the icon
  * @param size icon size with padding
  * @param colorSize inner size of the icon i.e. the size of the area where the color is drawn within the icon
