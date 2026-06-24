@@ -26,7 +26,10 @@ dependencies {
 
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {
-        intellijIdeaCommunity("2024.2.5")
+        // 2025.2 bundles Kotlin 2.2, whose plugin can deserialize the openrndr 0.4.5 jars' Kotlin 2.2.0
+        // metadata. Older platforms (2024.2.5 bundled kotlinc 1.9.24) cannot read it, so the IDE builds no
+        // symbols for ColorRGBa & friends and every gutter/completion resolution silently fails.
+        intellijIdeaCommunity("2025.2")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
 
@@ -48,6 +51,12 @@ dependencies {
 //        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 //        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java)
     }
+}
+
+tasks.test {
+    // The IntelliJ light-fixture tests (which boot a real in-memory IDE with indexing) are memory hungry;
+    // 2g avoids OOM-kills (exit 137) and GC-thrash that otherwise surface as flaky "Too long completion" errors.
+    maxHeapSize = "2g"
 }
 
 //intellijPlatform {
