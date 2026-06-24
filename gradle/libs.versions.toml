@@ -2,21 +2,7 @@
 openrndr = "0.4.5"
 orx = "0.4.5"
 
-#plugins
-changelog = "2.5.0"
-intelliJPlatform = "2.6.0"
-kotlin = "2.4.0"
-kover = "0.9.8"
-versions = "0.54.0"
-
 [libraries]
 openrndr-color = { group = "org.openrndr", name = "openrndr-color", version.ref = "openrndr" }
 openrndr-math = { group = "org.openrndr", name = "openrndr-math", version.ref = "openrndr" }
 orx-color = { group = "org.openrndr.extra", name = "orx-color", version.ref = "orx" }
-
-[plugins]
-changelog = { id = "org.jetbrains.changelog", version.ref = "changelog" }
-intelliJPlatform = { id = "org.jetbrains.intellij.platform", version.ref = "intelliJPlatform" }
-kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
-versions = { id = "com.github.ben-manes.versions", version.ref = "versions" }
