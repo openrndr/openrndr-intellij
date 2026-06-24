@@ -1,12 +1,14 @@
 package org.openrndr.plugin.intellij.editor
 
-import com.intellij.openapi.command.CommandProcessor
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.resolution.successfulVariableAccessCall
 import org.jetbrains.kotlin.analysis.api.resolution.symbol
@@ -48,20 +50,32 @@ class ColorRGBaColorProvider : ElementColorProvider {
      * in two: [computeReplacement] resolves the call into plain data while reading, then [applyReplacement]
      * mutates the PSI inside a write command (so the edit is undoable as a single step).
      */
+    @OptIn(KaAllowAnalysisOnEdt::class)
     override fun setColorTo(element: PsiElement, color: Color) {
         if (element !is LeafPsiElement) return
         val project = element.project
-        val document = PsiDocumentManager.getInstance(project).getDocument(element.containingFile)
         val outerExpression =
             element.getParentOfTypes2<KtCallExpression, KtDotQualifiedExpression>() as? KtExpression ?: return
 
         // Resolution must happen outside the write command: the Analysis API forbids `analyze {}` from a
         // write action. We extract everything we need as plain data / PSI here, then mutate the PSI below.
-        val replacement = analyze(outerExpression) { computeReplacement(outerExpression, color) } ?: return
-
-        val command = Runnable { applyReplacement(outerExpression, replacement, project) }
-        CommandProcessor.getInstance()
-            .executeCommand(project, command, OpenrndrBundle.message("change.color.command.text"), null, document)
+        // (it is a compile error, not just a runtime one, because it can freeze the IDE), so we cannot resolve
+        // here. Instead we defer with invokeLater: by the time the runnable executes the platform's write action
+        // has finished, so resolution runs on the EDT but outside any write lock (allowed via the opt-in), and we
+        // then perform the PSI edit in our own write command so it stays a single undoable step.
+        ApplicationManager.getApplication().invokeLater {
+            if (!outerExpression.isValid) return@invokeLater
+            val replacement = allowAnalysisOnEdt {
+                analyze(outerExpression) { computeReplacement(outerExpression, color) }
+            } ?: return@invokeLater
+            WriteCommandAction.runWriteCommandAction(
+                project,
+                OpenrndrBundle.message("change.color.command.text"),
+                null,
+                { applyReplacement(outerExpression, replacement, project) },
+                element.containingFile
+            )
+        }
     }
 
     /**

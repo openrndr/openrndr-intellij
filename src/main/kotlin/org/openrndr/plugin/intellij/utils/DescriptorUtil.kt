@@ -120,10 +120,24 @@ internal fun KaSession.computeValueArguments(call: KaFunctionCall<*>): ArgumentM
     }
 }
 
-/** True if [symbol] is one of the static colors declared on `ColorRGBa` (e.g. `ColorRGBa.RED`). */
+/**
+ * True if [symbol] is a static `ColorRGBa` color we can rewrite as `ColorRGBa.fromHex(...)`.
+ *
+ * This covers two declaration shapes that both render as `ColorRGBa.NAME`:
+ *  - openrndr's built-ins (e.g. `ColorRGBa.RED`), which are members of `ColorRGBa.Companion`;
+ *  - orx's presets (e.g. `ColorRGBa.ORANGE_RED`), which are top-level **extension** properties on
+ *    `ColorRGBa.Companion` declared in `org.openrndr.extra.color.presets` and so have no enclosing class.
+ *
+ * Matching on the (`ColorRGBa`) return type recognises both, while the package gate keeps it limited to the
+ * openrndr color model — mirroring how [resolveToColor] decides a symbol is a static color in the first place.
+ * Returning the `ColorRGBa` type also naturally excludes other color-model statics like `ColorXYZa` white
+ * points, which we cannot express via `fromHex`.
+ */
 internal fun isColorRGBaStatic(symbol: KaVariableSymbol): Boolean {
-    val classId = symbol.callableId?.classId ?: return false
-    return classId.outermostClassId.shortClassName.identifier == "ColorRGBa"
+    if (!isColorModelSymbol(symbol)) return false
+    val classId = (symbol.returnType as? KaClassType)?.classId ?: return false
+    return classId.packageFqName.asString() == "org.openrndr.color" &&
+            classId.shortClassName.identifier == "ColorRGBa"
 }
 
 /**
