@@ -101,19 +101,7 @@ gutter and autocomplete produce the expected swatches.
 
 ## Running the tests
 
-The plugin tests have a dependency on openrndr-color which unfortunately means intellij-community sources will be needed
-to run the tests.
+Just run the Gradle `test` task. The tests boot a light in-memory IDE fixture with the OPENRNDR jars resolved
+from the regular dependencies, so no extra setup is required. Cloning the intellij-community sources used to
+be required for running tests but it's no longer the case.
 
-Make sure you check out intellij-community repository to the same tag you're trying to build the plugin against.
-So for example, if this plugin is targeting `232.10227.8`, you will need to run `git switch --detach idea/232.10227.8`.
-
-Clone https://github.com/JetBrains/intellij-community ([consult their README](https://github.com/JetBrains/intellij-community#getting-intellij-idea-community-edition-source-code=))
-in a directory adjacent to where you cloned this project so the resulting directory layout looks like the following.
-
-```cmd
-/projects/
-├───intellij-community
-└───openrndr-intellij
-```
-
-Now you can run the Gradle `test` task.
