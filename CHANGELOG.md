@@ -4,13 +4,22 @@
 
 ### Added
 
+- Add comments to source code
+- Describe the plugin in the README
+
 ### Changed
-- Update Kotlin to 1.9.22
+
+- Switch to Analysis API and K2 compiler
+- Update OPENRNDR/ORX to 0.4.5
+- Update Gradle to 9.6.0
+- Update Kotlin to 2.4.0
+- Update to simplified plugin template
 - Update gradle-intellij-plugin to 1.16.1
-- Update OPENRNDR/ORX to 0.4.4
 - Raise minimum supported IntelliJ version to 2023.2 due to https://youtrack.jetbrains.com/issue/KT-58021
 
 ### Removed
+- Fix tests not passing after update
+- Fix color picker not updating source code after update
 
 ### Fixed
 

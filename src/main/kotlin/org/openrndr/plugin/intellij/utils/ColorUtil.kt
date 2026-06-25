@@ -27,10 +27,10 @@ import kotlin.reflect.full.memberProperties
 
 /**
  * Central helpers for converting between openrndr colors and AWT [Color]s, and for deciding whether a piece
- * of Kotlin source represents an openrndr color.
+ * of Kotlin code represents an openrndr color.
  *
- * The marquee function is [resolveToColor], which the gutter color provider, the completion contributor and
- * the debugger renderer all rely on to answer "is this a color, and which one?". The reflection-built
+ * The marquee function is [resolveToColor], which the gutter color provider, the completion contributor, and
+ * the debugger renderer all rely on to answer "is this a color, and which one?" The reflection-built
  * [staticColorMap] / [staticWhitePointMap] let us recognise named constants like `ColorRGBa.RED` without
  * hardcoding them.
  */
@@ -139,7 +139,7 @@ internal object ColorUtil {
      */
     private val COLOR_PROVIDER_PATTERN: PsiElementPattern.Capture<PsiElement> = psiElement(KtTokens.IDENTIFIER)
         // @formatter:off
-        // Exclude import statements (which are also dot qualified expressions). The K1 implementation used
+        // Exclude import statements (which are also dot-qualified expressions). The K1 implementation used
         // `.withReference(SyntheticPropertyAccessorReference)` to disambiguate, but that reference type is not
         // produced in K2 mode, so we exclude imports structurally instead.
         .andNot(psiElement().inside(KtImportDirective::class.java))

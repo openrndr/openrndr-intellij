@@ -9,10 +9,17 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.intellij.platform")
-    //id("org.jetbrains.intellij.platform.migration")
     id("org.jetbrains.changelog")
     id("com.github.ben-manes.versions")
 }
+
+// TODO:
+// The plugin template was greatly simplified by JetBrains.
+// It seems like the new template has defaults that remove the need for some of this code.
+// As it is, the plugin builds and work, and tests pass. But the changelog functionality,
+// extracting the description from the README, signing and publishing need all to be tested.
+// It's possible that some of the commented out code must be brought back.
+// Once tested, the unused parts can be deleted.
 
 //group = providers.gradleProperty("pluginGroup").get()
 //version = providers.gradleProperty("pluginVersion").get()
@@ -28,14 +35,15 @@ dependencies {
     intellijPlatform {
         // 2025.2 bundles Kotlin 2.2, whose plugin can deserialize the openrndr 0.4.5 jars' Kotlin 2.2.0
         // metadata. Older platforms (2024.2.5 bundled kotlinc 1.9.24) cannot read it, so the IDE builds no
-        // symbols for ColorRGBa & friends and every gutter/completion resolution silently fails.
+        // symbols for ColorRGBa & friends, and every gutter/completion resolution silently fails.
         intellijIdeaCommunity("2025.2")
+
+        // Test framework required for BasePlatformTestCase/myFixture (IntelliJ Platform Gradle Plugin 2.x).
+        // The Java framework supplies IdeaTestUtil and DefaultLightProjectDescriptor used by the tests.
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
 
 //        create(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
-//
-//        //intellijIdeaCommunity("2024.2.5")
 //
 //        // Plugin Dependencies. Uses `platformBundledPlugins` property from the gradle.properties file for bundled IntelliJ Platform plugins.
 //        bundledPlugins(providers.gradleProperty("platformBundledPlugins").map { it.split(',') })
@@ -45,11 +53,6 @@ dependencies {
 //
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
-//
-//        // Test framework required for BasePlatformTestCase/myFixture (IntelliJ Platform Gradle Plugin 2.x).
-//        // The Java framework supplies IdeaTestUtil and DefaultLightProjectDescriptor used by the tests.
-//        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
-//        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java)
     }
 }
 
