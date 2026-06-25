@@ -133,7 +133,7 @@ tasks.test {
 //
 //val defaultIntellijSourcesPath: String = File("$projectDir/../intellij-community").absolutePath
 //
-//tasks {
+tasks {
 //    publishPlugin {
 //        dependsOn(patchChangelog)
 //    }
@@ -157,17 +157,17 @@ tasks.test {
 //        maxHeapSize = "2g"
 //    }
 //
-//    dependencyUpdates {
-//        gradleReleaseChannel = "current"
-//
-//        val nonStableKeywords = listOf("alpha", "beta", "rc")
-//
-//        fun isNonStable(version: String) = nonStableKeywords.any {
-//            version.lowercase().contains(it)
-//        }
-//
-//        rejectVersionIf {
-//            isNonStable(candidate.version) && !isNonStable(currentVersion)
-//        }
-//    }
-//}
+    dependencyUpdates {
+        gradleReleaseChannel = "current"
+
+        val nonStableKeywords = listOf("alpha", "beta", "rc")
+
+        fun isNonStable(version: String) = nonStableKeywords.any {
+            version.lowercase().contains(it)
+        }
+
+        rejectVersionIf {
+            isNonStable(candidate.version) && !isNonStable(currentVersion)
+        }
+    }
+}
