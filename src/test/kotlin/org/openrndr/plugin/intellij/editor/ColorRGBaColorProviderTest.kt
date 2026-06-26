@@ -150,7 +150,6 @@ class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
         assertGutterIconColor(rgb("#0ff").toAWTColor(), "rgb(\"#0ff\")")
     }
 
-    @Suppress("MayBeConstant")
     fun testColorRGBaConstructorWithConst() {
         @Language("kt")
         val prelude = """

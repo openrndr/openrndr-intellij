@@ -27,7 +27,7 @@ import org.openrndr.plugin.intellij.utils.isColorModelType
  * It does not generate completion items itself; it runs after the other contributors (registered `order="first,
  * before KotlinCompletionContributor"`) and decorates the items they produce. Cheap items (static colors such
  * as `ColorRGBa.RED`, whose color is already known via [ColorUtil.staticColorMap]) get their icon immediately;
- * color-typed local properties get an [getExpensiveRenderer]-deferred icon so the file is only resolved when the
+ * color-typed local properties get an `getExpensiveRenderer`-deferred icon so the file is only resolved when the
  * item actually becomes visible.
  */
 class ColorRGBaCompletionContributor : CompletionContributor() {
@@ -67,7 +67,7 @@ private fun collectColorPropertyNames(file: KtFile): Set<String> {
     }
 }
 
-/** Finds the property named [name] in [file], used to recover a declaration from a K2 lookup element that carries no PSI. */
+/** Finds the property named [name] in [KtFile], used to recover a declaration from a K2 lookup element that carries no PSI. */
 private fun KtFile.findColorProperty(name: String): KtProperty? = PsiTreeUtil.findChildrenOfType(
     this,
     KtProperty::class.java

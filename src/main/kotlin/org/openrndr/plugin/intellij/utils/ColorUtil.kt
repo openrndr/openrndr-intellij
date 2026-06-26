@@ -64,7 +64,7 @@ internal object ColorUtil {
     /**
      * Converts an AWT [Color] (always sRGB) into a [ColorRGBa] of the given [linearity], **converting** the
      * components into that linearity rather than merely relabelling them. This is the inverse of [toAWTColor]:
-     * `someColor.toColorRGBa(l).toAWTColor() == someColor` for any [l], which is what makes the color picker
+     * `c.toColorRGBa(l).toAWTColor() == c` for any `c`, which is what makes the color picker
      * round-trip — a color written into a `Linearity.LINEAR` expression is stored as its linear-light values.
      */
     fun Color.toColorRGBa(linearity: Linearity = Linearity.SRGB) = getComponents(null).let { (r, g, b, a) ->
