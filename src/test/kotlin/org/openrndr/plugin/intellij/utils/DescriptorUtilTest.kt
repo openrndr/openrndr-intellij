@@ -16,10 +16,25 @@ class DescriptorUtilTest : TestCase() {
         )
         assertEquals(0 to 5, parseOpenrndrColorMajorMinor("/x/openrndr-color-jvm-0.5.0-alpha4.jar!/x"))
         assertEquals(0 to 5, parseOpenrndrColorMajorMinor("/x/openrndr-color-jvm-0.5.0-SNAPSHOT.jar!/x"))
-        assertEquals(0 to 4, parseOpenrndrColorMajorMinor("/x/openrndr-color-0.4.5.jar")) // no -jvm classifier
+        assertEquals(0 to 4, parseOpenrndrColorMajorMinor("/x/openrndr-color-0.4.5.jar")) // common metadata, no class.
         assertEquals(1 to 2, parseOpenrndrColorMajorMinor("/x/openrndr-color-jvm-1.2.3.jar"))
-        // Must not be confused by another library that merely contains a version number.
+
+        // Non-JVM Kotlin Multiplatform targets: klibs and other platform classifiers must resolve too.
+        assertEquals(0 to 5, parseOpenrndrColorMajorMinor("/x/openrndr-color-js-0.5.0.klib"))
+        assertEquals(0 to 4, parseOpenrndrColorMajorMinor("/x/openrndr-color-js-ir-0.4.5.klib")) // multi-token class.
+        assertEquals(0 to 5, parseOpenrndrColorMajorMinor("/x/openrndr-color-iosx64-0.5.0-alpha4.klib"))
+        assertEquals(0 to 5, parseOpenrndrColorMajorMinor("/x/openrndr-color-metadata-0.5.0.jar"))
+        // A realistic Gradle cache path: the match must come from the file name, not the version-less directory.
+        assertEquals(
+            0 to 5,
+            parseOpenrndrColorMajorMinor(
+                "/h/.gradle/caches/modules-2/files-2.1/org.openrndr/openrndr-color-js/0.5.0/ab/openrndr-color-js-0.5.0.klib"
+            )
+        )
+
+        // Must not be confused by other artifacts that merely contain a version number.
         assertNull(parseOpenrndrColorMajorMinor("/x/orx-color-jvm-0.5.0.jar"))
+        assertNull(parseOpenrndrColorMajorMinor("/x/openrndr-colorbuffer-jvm-1.0.0.jar"))
         assertNull(parseOpenrndrColorMajorMinor("garbage"))
     }
 

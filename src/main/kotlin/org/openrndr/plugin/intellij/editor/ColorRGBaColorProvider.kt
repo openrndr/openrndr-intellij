@@ -21,6 +21,7 @@ import org.openrndr.plugin.intellij.OpenrndrBundle
 import org.openrndr.plugin.intellij.utils.ResolvedArgInfo
 import org.openrndr.plugin.intellij.utils.callableShortName
 import org.openrndr.plugin.intellij.utils.computeValueArguments
+import org.openrndr.plugin.intellij.utils.hasIntComponents
 import org.openrndr.plugin.intellij.utils.linearity
 import org.openrndr.plugin.intellij.utils.isColorRGBaStatic
 import org.openrndr.plugin.intellij.utils.resolvedColorArguments
@@ -94,8 +95,16 @@ class ColorRGBaColorProvider : ElementColorProvider {
             val ref = argumentMap?.values
                 ?.firstNotNullOfOrNull { it as? ConstantValueContainer.WhitePoint }?.value
             val linearity = argumentMap?.linearity ?: ConstantValueContainer.DEFAULT_LINEARITY
-            val colorArguments = descriptor.argumentsFromColor(color, ref, linearity)
-            return ColorReplacement.Arguments(resolvedColorArguments(functionCall), colorArguments)
+            // The Int `rgb(red, green, blue, alpha)` overload (0-255 sRGB) keeps its integer form instead of
+            // writing doubles, which would silently switch the call to the linear double overload on openrndr
+            // 0.5.0. It rebuilds positionally so a fully-opaque alpha can fall back to its 255 default even when
+            // the original call passed alpha explicitly.
+            val isIntRgb = descriptor == ColorRGBaDescriptor.RGB && argumentMap?.hasIntComponents == true
+            val colorArguments =
+                if (isIntRgb) intRgbArguments(color) else descriptor.argumentsFromColor(color, ref, linearity)
+            return ColorReplacement.Arguments(
+                resolvedColorArguments(functionCall), colorArguments, positional = isIntRgb
+            )
         }
 
         callInfo.successfulVariableAccessCall()?.let { variableAccess ->
@@ -141,7 +150,11 @@ class ColorRGBaColorProvider : ElementColorProvider {
 
             is ColorReplacement.Arguments -> {
                 outerExpression.getChildOfType<KtValueArgumentList>()?.let {
-                    it.replace(it.constructReplacement(replacement.resolvedArgs, replacement.colorArguments))
+                    it.replace(
+                        it.constructReplacement(
+                            replacement.resolvedArgs, replacement.colorArguments, replacement.positional
+                        )
+                    )
                 } ?: outerExpression.getChildOfType<KtCallExpression>()?.let {
                     // This handles the scenario after ColorRGBa.RED has been replaced by ColorRGBa.fromHex(...)
                     // without closing the color picker and picking a new color. I think IntelliJ has not yet
@@ -160,8 +173,16 @@ class ColorRGBaColorProvider : ElementColorProvider {
         /** Replace the `RED` selector of `ColorRGBa.RED` with `fromHex(...)`. */
         class StaticColorRGBa(val hexArgument: String) : ColorReplacement
 
-        /** Rewrite the value-argument list of a color constructor / function call. */
-        class Arguments(val resolvedArgs: List<ResolvedArgInfo>, val colorArguments: Array<String>) : ColorReplacement
+        /**
+         * Rewrite the value-argument list of a color constructor / function call. When [positional], the list
+         * is rebuilt purely from [colorArguments] (no per-argument preservation), which lets a dropped trailing
+         * argument actually disappear — e.g. an opaque alpha falling back to its default in `rgb(Int, …)`.
+         */
+        class Arguments(
+            val resolvedArgs: List<ResolvedArgInfo>,
+            val colorArguments: Array<String>,
+            val positional: Boolean = false,
+        ) : ColorReplacement
     }
 
     /**
@@ -170,16 +191,18 @@ class ColorRGBaColorProvider : ElementColorProvider {
      * @param resolvedArgs the resolved arguments (in parameter order) of the original call
      * @param replacementArguments replacement arguments which are retrieved by parameter index and
      * converted into [KtExpression]s
+     * @param positional rebuild the list purely from [replacementArguments], dropping the original arguments
+     * entirely (used to let a trailing default-valued argument disappear)
      */
     private fun KtValueArgumentList.constructReplacement(
-        resolvedArgs: List<ResolvedArgInfo>, replacementArguments: Array<String>
+        resolvedArgs: List<ResolvedArgInfo>, replacementArguments: Array<String>, positional: Boolean = false
     ): KtValueArgumentList {
         val psiFactory = KtPsiFactory.contextual(this, true)
 
-        // It handles overloads where the resolved function call is not the one we want anymore
-        // because it is incapable of expressing the desired color accurately, such as `rgb` with 2 arguments.
-        // Potentially incorrect because we're making an assumption the caller is passing correct arguments.
-        if (resolvedArgs.size < replacementArguments.size - 1) {
+        // Rebuild a fresh positional list when asked, or when the resolved overload can't express the color
+        // accurately (e.g. `rgb` with 2 arguments). Potentially incorrect because we're making an assumption
+        // the caller is passing correct arguments.
+        if (positional || resolvedArgs.size < replacementArguments.size - 1) {
             return psiFactory.buildValueArgumentList {
                 appendFixedText("(")
                 repeat(replacementArguments.size) {
@@ -220,3 +243,11 @@ class ColorRGBaColorProvider : ElementColorProvider {
         }
     }
 }
+
+/**
+ * The 0-255 integer components written back into an Int `rgb(red, green, blue, alpha = 255)` call for [color].
+ * A fully-opaque alpha (255) is omitted so the call falls back to the default rather than spelling it out.
+ */
+internal fun intRgbArguments(color: Color): Array<String> =
+    if (color.alpha == 255) arrayOf("${color.red}", "${color.green}", "${color.blue}")
+    else arrayOf("${color.red}", "${color.green}", "${color.blue}", "${color.alpha}")

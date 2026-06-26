@@ -6,6 +6,7 @@
 
 - Add comments to source code
 - Describe the plugin in the README
+- Support for rgb(Int, Int, Int, Int)
 
 ### Changed
 

@@ -89,6 +89,23 @@ internal enum class ColorRGBaDescriptor {
                     }
                 }
 
+                // openrndr 0.5.0's `rgb(red, green, blue, alpha = 255)` Int overload: 0-255 sRGB regardless of
+                // version. Each explicit Int is scaled by 255; an omitted alpha is the normalized 1.0 our ALPHA
+                // default already supplies as a Double, so we pass Doubles through unscaled.
+                is Int -> argumentMap.toList().sortedBy { it.first.index }.mapNotNull {
+                    when (val component = (it.second as? ConstantValueContainer.Constant)?.value) {
+                        is Int -> component / 255.0
+                        is Double -> component
+                        else -> null
+                    }
+                }.let {
+                    when (it.size) {
+                        3 -> ColorRGBa(it[0], it[1], it[2], 1.0, Linearity.SRGB)
+                        4 -> ColorRGBa(it[0], it[1], it[2], it[3], Linearity.SRGB)
+                        else -> null
+                    }?.toAWTColor()
+                }
+
                 is String -> try {
                     ColorRGBa.fromHex(firstValue).toAWTColor()
                 } catch (_: Exception) {

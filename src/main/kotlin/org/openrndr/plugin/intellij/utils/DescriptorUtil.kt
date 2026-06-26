@@ -123,13 +123,15 @@ internal fun KaSession.computeValueArguments(call: KaFunctionCall<*>): ArgumentM
             put(ColorArgument(index, name), container)
         }
 
-        // openrndr's double `rgb(...)` shorthand carries no `linearity` parameter, yet its result linearity
-        // changed from sRGB to linear in openrndr 0.5.0 (commit 01d4f82). Because we compute the swatch with
-        // our *bundled* openrndr — which can't observe the project's behavior — we detect the project's
-        // openrndr-color version from the resolved `rgb` symbol and record the matching linearity, which the
-        // RGB descriptor then honors instead of calling the bundled `rgb()`.
+        // openrndr's `rgb(...)` shorthand carries no `linearity` parameter, yet the result linearity of its
+        // *double* overloads changed from sRGB to linear in openrndr 0.5.0 (commit 01d4f82). Because we compute
+        // the swatch with our *bundled* openrndr — which can't observe the project's behavior — we detect the
+        // project's openrndr-color version from the resolved `rgb` symbol and record the matching linearity,
+        // which the RGB descriptor then honors instead of calling the bundled `rgb()`. The Int overload added in
+        // the same release stays sRGB regardless of version.
         if (callableShortName(symbol) == "rgb") {
-            val linearity = rgbShorthandLinearity(openrndrColorVersionOf(symbol))
+            val linearity =
+                if (hasIntComponents) Linearity.SRGB else rgbShorthandLinearity(openrndrColorVersionOf(symbol))
             put(ColorArgument(symbol.valueParameters.size, "linearity"), ConstantValueContainer.LinearityArg(linearity))
         }
     }
@@ -246,7 +248,14 @@ private fun KaSession.resolveLinearity(expression: KtExpression): ConstantValueC
     return ConstantValueContainer.LinearityArg(value)
 }
 
-private val OPENRNDR_COLOR_JAR = Regex("""openrndr-color(?:-jvm)?-(\d+)\.(\d+)\.\d+""")
+// Matches the openrndr-color artifact file name across Kotlin targets, capturing (major, minor):
+//  - JVM:               openrndr-color-jvm-0.5.0.jar
+//  - common metadata:   openrndr-color-0.5.0.jar      (no platform classifier)
+//  - JS / native klibs: openrndr-color-js-0.5.0.klib, openrndr-color-iosx64-0.5.0.klib, …
+// The platform classifier(s) are optional and each must start with a letter, so they never swallow the
+// (digit-leading) version. We only ever apply this to the jar/klib of a resolved `org.openrndr.color` symbol,
+// so a permissive classifier can't pick up an unrelated artifact's version.
+private val OPENRNDR_COLOR_ARTIFACT = Regex("""openrndr-color(?:-[a-z][a-z0-9]*)*-(\d+)\.(\d+)\.\d+""")
 
 /**
  * The `openrndr-color` version, as (major, minor), of the library the resolved [symbol] comes from, or `null`
@@ -258,9 +267,9 @@ internal fun KaSession.openrndrColorVersionOf(symbol: KaSymbol): Pair<Int, Int>?
     return parseOpenrndrColorMajorMinor(path)
 }
 
-/** Extracts the (major, minor) of an `openrndr-color` jar from [path], or `null` if it isn't found there. */
+/** Extracts the (major, minor) of an `openrndr-color` jar/klib from [path], or `null` if it isn't found there. */
 internal fun parseOpenrndrColorMajorMinor(path: String): Pair<Int, Int>? =
-    OPENRNDR_COLOR_JAR.find(path)?.let { it.groupValues[1].toInt() to it.groupValues[2].toInt() }
+    OPENRNDR_COLOR_ARTIFACT.find(path)?.let { it.groupValues[1].toInt() to it.groupValues[2].toInt() }
 
 /**
  * The linearity of openrndr's double `rgb(...)` shorthand for the given openrndr-color [version]: sRGB before

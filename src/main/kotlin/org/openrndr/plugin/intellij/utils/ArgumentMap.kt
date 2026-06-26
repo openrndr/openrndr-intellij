@@ -34,6 +34,14 @@ internal val ArgumentMap.linearity: Linearity
     get() = values.firstNotNullOfOrNull { (it as? ConstantValueContainer.LinearityArg)?.value }
         ?: ConstantValueContainer.DEFAULT_LINEARITY
 
+/**
+ * True when the call is openrndr 0.5.0's Int `rgb(red, green, blue, alpha)` overload — i.e. a component is an
+ * `Int` (0-255) rather than a `Double` or hex `String`. That overload is always sRGB and its components are
+ * scaled by 255, unlike the Double `rgb(...)` overload whose linearity is version-dependent.
+ */
+internal val ArgumentMap.hasIntComponents: Boolean
+    get() = values.any { (it as? ConstantValueContainer.Constant)?.value is Int }
+
 internal fun ArgumentMap.computeWhitePoint(): ColorXYZa? = colorComponents.let {
     when (it.size) {
         3 -> ColorXYZa(it[0], it[1], it[2], 1.0)
