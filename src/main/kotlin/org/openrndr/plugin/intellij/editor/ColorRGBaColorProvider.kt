@@ -27,6 +27,8 @@ import org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor
 import java.awt.Color
 
 /**
+ * # Gutter color previews and color picker
+ *
  * Drives the color gutter icon and color picker for openrndr color expressions in Kotlin code.
  *
  * IntelliJ calls [ElementColorProvider] for every leaf PSI element to ask two questions:

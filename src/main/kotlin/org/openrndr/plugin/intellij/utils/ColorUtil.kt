@@ -9,17 +9,17 @@ import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.resolution.successfulVariableAccessCall
 import org.jetbrains.kotlin.analysis.api.resolution.symbol
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
-import org.jetbrains.kotlin.psi.KtExpression
-import org.jetbrains.kotlin.psi.KtImportDirective
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfTypes2
 import org.openrndr.color.ColorModel
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.ColorXYZa
 import org.openrndr.color.Linearity
 import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor
+import org.openrndr.plugin.intellij.utils.ColorUtil.COLOR_PROVIDER_PATTERN
+import org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor
+import org.openrndr.plugin.intellij.utils.ColorUtil.staticColorMap
+import org.openrndr.plugin.intellij.utils.ColorUtil.staticWhitePointMap
 import java.awt.Color
 import java.lang.reflect.Modifier
 import kotlin.reflect.full.memberProperties
@@ -145,12 +145,14 @@ internal object ColorUtil {
         .andNot(psiElement().inside(KtImportDirective::class.java))
         .withParent(
             or(
+
                 /** Matches something like **ColorRGBa**.RED */
                 psiElement(KtNameReferenceExpression::class.java)
                     .beforeLeaf(psiElement(KtTokens.DOT)
                         .beforeLeaf(psiElement(KtTokens.IDENTIFIER)
                             .beforeLeaf(not(psiElement(KtTokens.LPAR)))))
                     .withParent(KtDotQualifiedExpression::class.java),
+
                 /** Matches something like **ColorRGBa**(...) or ColorRGBa.**fromHex**(...) */
                 psiElement(KtNameReferenceExpression::class.java)
                     .beforeLeaf(psiElement(KtTokens.LPAR))

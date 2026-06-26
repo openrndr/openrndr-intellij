@@ -19,6 +19,8 @@ import org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor
 import org.openrndr.plugin.intellij.utils.isColorModelType
 
 /**
+ * # Code completion color previews
+ *
  * Adds a color swatch icon to code-completion items that name a color, so the autocomplete popup previews the
  * actual color next to entries like `RED` or a locally-declared `val myColor = rgb(...)`.
  *
@@ -31,15 +33,19 @@ import org.openrndr.plugin.intellij.utils.isColorModelType
 class ColorRGBaCompletionContributor : CompletionContributor() {
     override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {
         val file = parameters.originalFile as? KtFile
+
         // Names of color-typed properties declared in the file. Used (together with the static color map)
         // to decide which completion items are worth decorating, without resolving every single candidate.
         val colorPropertyNames = file?.let(::collectColorPropertyNames) ?: emptySet()
+
         result.runRemainingContributors(parameters) { completionResult ->
             val element = completionResult.lookupElement
+
             // The lookup string is the declaration's simple name for the value completions we care about
             // (e.g. "RED", "myVar0"). This works in both K1 and K2 modes without touching internal lookup
-            // object types, and matches how the tests identify these items.
+            // object types and matches how the tests identify these items.
             val name = element.lookupString
+
             if (file != null && (name in ColorUtil.staticColorMap || name in colorPropertyNames)) {
                 result.passResult(completionResult.withLookupElement(element.decorateWithIcon(name, file)))
             } else {
@@ -62,8 +68,10 @@ private fun collectColorPropertyNames(file: KtFile): Set<String> {
 }
 
 /** Finds the property named [name] in [file], used to recover a declaration from a K2 lookup element that carries no PSI. */
-private fun KtFile.findColorProperty(name: String): KtProperty? =
-    PsiTreeUtil.findChildrenOfType(this, KtProperty::class.java).firstOrNull { it.name == name }
+private fun KtFile.findColorProperty(name: String): KtProperty? = PsiTreeUtil.findChildrenOfType(
+    this,
+    KtProperty::class.java
+).firstOrNull { it.name == name }
 
 /**
  * Wraps [this] lookup element so its rendering shows a [RoundColorIcon].
@@ -74,24 +82,31 @@ private fun KtFile.findColorProperty(name: String): KtProperty? =
  */
 private fun LookupElement.decorateWithIcon(name: String, file: KtFile) =
     object : LookupElementDecorator<LookupElement>(this) {
+        // Direct set an icon
         override fun renderElement(presentation: LookupElementPresentation) {
             super.renderElement(presentation)
             val color = ColorUtil.staticColorMap[name] ?: return
             presentation.icon = JBUIScale.scaleIcon(RoundColorIcon(color, 16, 14))
         }
 
+        // Deferred approach to set an icon
         override fun getExpensiveRenderer() = object : LookupElementRenderer<LookupElement>() {
             override fun renderElement(element: LookupElement?, presentation: LookupElementPresentation) {
                 element?.renderElement(presentation)
                 // K2 lookup elements carry no PSI, so recover the declaration by name from the file.
                 val property = file.findColorProperty(name) ?: return
-                val callExpression =
-                    PsiTreeUtil.findChildOfType(property.initializer, KtCallExpression::class.java, false)
-                        ?: return
+                val callExpression = PsiTreeUtil.findChildOfType(
+                    property.initializer,
+                    KtCallExpression::class.java,
+                    false
+                ) ?: return
+
                 val leaf = PsiTreeUtil.getDeepestFirst(callExpression)
                 val color = leaf.resolveToColor() ?: return
+
                 presentation.setTypeText(
-                    presentation.typeText, JBUIScale.scaleIcon(RoundColorIcon(color, 16, 14))
+                    presentation.typeText,
+                    JBUIScale.scaleIcon(RoundColorIcon(color, 16, 14))
                 )
             }
         }

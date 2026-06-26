@@ -18,9 +18,11 @@ internal typealias ArgumentMap = Map<ColorArgument, ConstantValueContainer>
  * @return all constant [Double]s in the map in canonical (parameter) order.
  */
 internal val ArgumentMap.colorComponents: List<Double>
-    get() = toList().sortedBy { it.first.index }.mapNotNull {
-        (it.second as? ConstantValueContainer.Constant)?.value as? Double
-    }
+    get() = toList()
+        .sortedBy { it.first.index }
+        .mapNotNull {
+            (it.second as? ConstantValueContainer.Constant)?.value as? Double
+        }
 
 internal fun ArgumentMap.computeWhitePoint(): ColorXYZa? = colorComponents.let {
     when (it.size) {

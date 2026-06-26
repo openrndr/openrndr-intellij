@@ -21,6 +21,8 @@ import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
 /**
+ * # Debug view color preview
+ *
  * Shows a color swatch next to openrndr color values in the debugger's variables view.
  *
  * Unlike the editor features, the debugger has no source to analyze — it works against live values in the
@@ -53,19 +55,38 @@ class ColorRGBaRendererProvider : CompoundRendererProvider() {
             try {
                 var objectReference = (descriptor.value as? ObjectReference) ?: return@r null
                 var referenceType = objectReference.referenceType()
+
                 // If it isn't ColorRGBa, we'll need to convert it to one
                 if (referenceType.name() != COLORRGBA_NAME) {
-                    val toRGBa = DebuggerUtils.findMethod(referenceType, "toRGBa", null)
-                        ?: return@r null.also { LOG.error("Failed to find method \"toRGBa\" for $objectReference") }
+                    val toRGBa = DebuggerUtils.findMethod(
+                        referenceType,
+                        "toRGBa",
+                        null
+                    ) ?: return@r null.also {
+                        LOG.error("Failed to find method \"toRGBa\" for $objectReference")
+                    }
                     objectReference = evaluationContext.debugProcess.invokeMethod(
-                        evaluationContext, objectReference, toRGBa, emptyList()
+                        evaluationContext,
+                        objectReference,
+                        toRGBa,
+                        emptyList()
                     ) as? ObjectReference ?: return@r null
+
                     referenceType = objectReference.referenceType()
                 }
-                val fields = colorRGBaFieldNames.map { referenceType.fieldByName(it) ?: return@r null }
-                // It just so happens that sorting the field names in descending order nets us the desired order
-                val (r, g, b, alpha) = objectReference.getValues(fields).toList().sortedByDescending { it.first.name() }
-                    .map { (it.second as? DoubleValue)?.floatValue() ?: return@r null }
+                val fields = colorRGBaFieldNames.map {
+                    referenceType.fieldByName(it) ?: return@r null
+                }
+
+                // It just so happens that sorting the field names in descending order
+                // nets us the desired order
+                val (r, g, b, alpha) = objectReference.getValues(fields)
+                    .toList()
+                    .sortedByDescending { it.first.name() }
+                    .map {
+                        (it.second as? DoubleValue)?.floatValue() ?: return@r null
+                    }
+
                 JBUIScale.scaleIcon(RoundColorIcon(Color(r, g, b, alpha), 16, 12))
             } catch (e: Exception) {
                 throw EvaluateException(e.message, e)

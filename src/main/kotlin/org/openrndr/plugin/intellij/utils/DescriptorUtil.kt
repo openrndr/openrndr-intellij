@@ -5,35 +5,27 @@ import org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall
 import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.resolution.successfulVariableAccessCall
 import org.jetbrains.kotlin.analysis.api.resolution.symbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaVariableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.*
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KaNamedSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.KtBinaryExpression
-import org.jetbrains.kotlin.psi.KtExpression
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
-import org.jetbrains.kotlin.psi.KtPrefixExpression
-import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtPsiUtil
-import org.jetbrains.kotlin.psi.KtValueArgument
+import org.jetbrains.kotlin.psi.*
 import org.openrndr.plugin.intellij.editor.ConstantValueContainer
 
 /**
  * Resolution helpers built on top of the Kotlin Analysis API (`analyze {}` / [KaSession]).
  *
- * These replace the old K1 descriptor / [org.jetbrains.kotlin.resolve.BindingContext] based code.
+ * These replace the old K1 descriptor / `org.jetbrains.kotlin.resolve.BindingContext` based code.
  * Every function here is meant to be called from inside an `analyze {}` block (hence the [KaSession]
  * receiver); none of the [org.jetbrains.kotlin.analysis.api.symbols.KaSymbol]s or
  * [org.jetbrains.kotlin.analysis.api.types.KaType]s they touch are allowed to escape that block.
  */
 
 private val COLOR_MODEL_PACKAGES = setOf(
-    "org.openrndr.color", "org.openrndr.extra.color.presets", "org.openrndr.extra.color.spaces"
+    "org.openrndr.color",
+    "org.openrndr.extra.color.presets",
+    "org.openrndr.extra.color.spaces"
 )
 
 private val SHORTHAND_FUNCTIONS = setOf("rgb", "hsl", "hsv")
@@ -47,7 +39,8 @@ internal fun colorModelPackageOrNull(symbol: KaCallableSymbol): String? {
     return pkg?.takeIf { it in COLOR_MODEL_PACKAGES }
 }
 
-internal fun isColorModelSymbol(symbol: KaCallableSymbol): Boolean = colorModelPackageOrNull(symbol) != null
+internal fun isColorModelSymbol(symbol: KaCallableSymbol): Boolean =
+    colorModelPackageOrNull(symbol) != null
 
 /** True if [type] is a color model type (declared in one of the openrndr color packages). */
 internal fun isColorModelType(type: KaType): Boolean {
@@ -108,7 +101,7 @@ internal fun KaSession.computeValueArguments(call: KaFunctionCall<*>): ArgumentM
                 name == "linearity" -> ConstantValueContainer.Other
 
                 // Every other parameter is a numeric (or hex) color component. If we cannot fold it to a
-                // compile-time constant we must fail the whole resolution (returning null), otherwise the
+                // compile-time constant, we must fail the whole resolution (returning null), otherwise the
                 // remaining components would shift and yield a wrong color.
                 else -> {
                     val value = evaluateConstant(argExpression) ?: return null
@@ -148,7 +141,11 @@ internal fun isColorRGBaStatic(symbol: KaVariableSymbol): Boolean {
  * [com.intellij.psi.PsiElement] is safe to use outside the `analyze {}` block, so this is what we hand
  * to the color-picker rewrite logic.
  */
-internal class ResolvedArgInfo(val index: Int, val name: String, val valueArgument: KtValueArgument?)
+internal class ResolvedArgInfo(
+    val index: Int,
+    val name: String,
+    val valueArgument: KtValueArgument?
+)
 
 /**
  * Extracts, in parameter order, the [ResolvedArgInfo] for every value parameter of [call]. Used by the
@@ -178,14 +175,14 @@ private fun KaSession.evaluateConstant(expression: KtExpression, depth: Int = 0)
     if (depth > 16) return null
     return when (val expr = KtPsiUtil.deparenthesize(expression)) {
         is KtNameReferenceExpression -> {
-            val initializer = (expr.resolveToCall()?.successfulVariableAccessCall()?.symbol?.psi as? KtProperty)
-                ?.initializer ?: return null
+            val property = expr.resolveToCall()?.successfulVariableAccessCall()?.symbol?.psi as? KtProperty
+            val initializer = property?.initializer ?: return null
             evaluateConstant(initializer, depth + 1)
         }
 
         is KtPrefixExpression -> {
-            val operand = (evaluateConstant(expr.baseExpression ?: return null, depth + 1) as? Number)?.toDouble()
-                ?: return null
+            val num = evaluateConstant(expr.baseExpression ?: return null, depth + 1) as? Number
+            val operand = num?.toDouble() ?: return null
             when (expr.operationToken) {
                 KtTokens.MINUS -> -operand
                 KtTokens.PLUS -> operand
@@ -194,8 +191,10 @@ private fun KaSession.evaluateConstant(expression: KtExpression, depth: Int = 0)
         }
 
         is KtBinaryExpression -> {
-            val left = (evaluateConstant(expr.left ?: return null, depth + 1) as? Number)?.toDouble() ?: return null
-            val right = (evaluateConstant(expr.right ?: return null, depth + 1) as? Number)?.toDouble() ?: return null
+            val lNum = evaluateConstant(expr.left ?: return null, depth + 1) as? Number
+            val rNum = evaluateConstant(expr.right ?: return null, depth + 1) as? Number
+            val left = lNum?.toDouble() ?: return null
+            val right = rNum?.toDouble() ?: return null
             when (expr.operationToken) {
                 KtTokens.PLUS -> left + right
                 KtTokens.MINUS -> left - right

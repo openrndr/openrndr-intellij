@@ -64,19 +64,19 @@ The code lives under `src/main/kotlin/org/openrndr/plugin/intellij`, organized b
   per supported constructor / factory function (`ColorRGBa`, `rgb`, `fromHex`, `ColorHSVa`, every orx space …),
   each knowing how to turn resolved arguments **into** a color and a chosen color **back into** argument strings.
 
-**Editor (`editor/`)**:
+**1. Editor (`editor/`)**:
 [`ColorRGBaColorProvider`](src/main/kotlin/org/openrndr/plugin/intellij/editor/ColorRGBaColorProvider.kt)
 implements the IDE's `ElementColorProvider`. The IDE asks it for a color per element (it delegates to
 `ColorUtil.resolveToColor`, which draws the gutter swatch), and when the user picks a new color, it rewrites the
 source: it resolves the call to plain data while reading, then performs the PSI edit in a separate write command
 (the Analysis API forbids doing both at once).
 
-**Autocomplete (`completion/`)**:
+**2. Autocomplete (`completion/`)**:
 [`ColorRGBaCompletionContributor`](src/main/kotlin/org/openrndr/plugin/intellij/completion/ColorRGBaCompletionContributor.kt)
 runs after the normal completion contributors and decorates color-valued items with an icon: immediately for
 known static colors, lazily (only when shown) for color-typed local properties.
 
-**Debugger (`debugger/`)**:
+**3. Debugger (`debugger/`)**:
 [`ColorRGBaRendererProvider`](src/main/kotlin/org/openrndr/plugin/intellij/debugger/ColorRGBaRendererProvider.kt)
 has no source to analyze, so it works over JDI: it claims any value implementing OPENRNDR's `ColorModel`, reads
 its components off the live object (converting via a remote `toRGBa()` call when needed), and renders a swatch.

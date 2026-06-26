@@ -19,8 +19,8 @@ internal sealed class ConstantValueContainer {
 
     /**
      * A known argument that is not a color component, e.g. the `linearity` enum argument of
-     * [org.openrndr.color.ColorRGBa]. Kept so the argument map can be complete, but ignored by all
-     * consumers that only look at color components.
+     * [org.openrndr.color.ColorRGBa]. Kept so the argument map can be complete
+     * but ignored by all consumers that only look at color components.
      */
     object Other : ConstantValueContainer()
 

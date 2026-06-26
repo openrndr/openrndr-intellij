@@ -3,6 +3,8 @@ package org.openrndr.plugin.intellij.editor
 import org.jetbrains.kotlin.utils.threadLocal
 import org.openrndr.color.*
 import org.openrndr.extra.color.spaces.*
+import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor.Companion.colorFromArgumentsSimple
+import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor.Companion.fromCallableName
 import org.openrndr.plugin.intellij.utils.ArgumentMap
 import org.openrndr.plugin.intellij.utils.ColorUtil.defaultColorRGBa
 import org.openrndr.plugin.intellij.utils.ColorUtil.toAWTColor
@@ -50,24 +52,26 @@ internal enum class ColorRGBaDescriptor {
                 } catch (_: Exception) {
                     null
                 }
+
                 else -> null
             }
         }
 
         override val defaultLinearity: Linearity = defaultColorRGBa.linearity
     },
+
     /** The `rgb(...)` shorthand factory function: 1–4 doubles, or a hex string. */
     RGB {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) =
             argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toRGBa)
 
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? {
-            // The argument types for either call are homogenous so it doesn't matter which argument the map
+            // The argument types for either call are homogenous, so it doesn't matter which argument the map
             // returns for us as we're only interested in knowing the type
             val anyArgumentValue = argumentMap.values.firstOrNull() as? ConstantValueContainer.Constant
             return when (val firstValue = anyArgumentValue?.value) {
                 is Double -> argumentMap.colorComponents.let {
-                    // Alpha is always included so we only ever have either 2 or 4 components, but whatever
+                    // Alpha is always included, so we only ever have either 2 or 4 components, but whatever
                     when (it.size) {
                         1 -> rgb(it[0])
                         2 -> rgb(it[0], it[1])
@@ -76,11 +80,13 @@ internal enum class ColorRGBaDescriptor {
                         else -> null
                     }?.toAWTColor()
                 }
+
                 is String -> try {
                     ColorRGBa.fromHex(firstValue).toAWTColor()
                 } catch (_: Exception) {
                     null
                 }
+
                 else -> null
             }
         }
@@ -89,10 +95,14 @@ internal enum class ColorRGBaDescriptor {
     },
 
     // @formatter:off
-    // Below: one constant per color-model constructor. They all delegate to the `*Simple`/`*Ref` companion
-    // helpers, differing only in which openrndr conversion function they use and (for the `ColorXYZa?` ref
-    // models) whether they thread a reference white point through. The `argumentsFromColor`/`colorFromArguments`
-    // round-trip is intended to be lossless modulo floating-point error; see [defaultLinearity] for why.
+    // Below: one constant per color-model constructor.
+    //
+    // They all delegate to the `*Simple`/`*Ref` companion helpers,
+    // differing only in which openrndr conversion function they use and (for the `ColorXYZa?` ref
+    // models) whether they thread a reference white point through.
+    //
+    // The `argumentsFromColor`/`colorFromArguments` round-trip is intended to be
+    // a lossless modulo floating-point error; see [defaultLinearity] for why.
     ColorRGBaConstructor {
         override fun argumentsFromColor(color: Color, ref: ColorXYZa?) = argumentsFromColorSimple(color, defaultLinearity, ColorRGBa::toRGBa)
         override fun colorFromArguments(argumentMap: ArgumentMap): Color? = colorFromArgumentsSimple(argumentMap, ::ColorRGBa)
@@ -218,8 +228,9 @@ internal enum class ColorRGBaDescriptor {
 
     companion object {
         /**
-         * @param callableName the simple name of the resolved function/constructor, e.g. `fromHex`,
-         * `rgb`, or `ColorRGBa` (see [org.openrndr.plugin.intellij.utils.callableShortName]).
+         * @param callableName the simple name of the resolved function/constructor,
+         * e.g. `fromHex`, `rgb`, or `ColorRGBa`
+         * (see [org.openrndr.plugin.intellij.utils.callableShortName]).
          */
         fun fromCallableName(callableName: String?): ColorRGBaDescriptor? {
             return when (callableName) {
@@ -256,7 +267,9 @@ internal enum class ColorRGBaDescriptor {
          * its `(c0, c1, c2, alpha)` vector. Used by every descriptor whose constructor takes plain components.
          */
         fun argumentsFromColorSimple(
-            color: Color, linearity: Linearity, conversionFunction: (ColorRGBa) -> ColorModel<*>
+            color: Color,
+            linearity: Linearity,
+            conversionFunction: (ColorRGBa) -> ColorModel<*>
         ): Array<String> {
             val colorVector = conversionFunction(color.toColorRGBa(linearity)).toVector4()
             return colorVector.toDoubleArray().formatNumbers()
@@ -268,7 +281,8 @@ internal enum class ColorRGBaDescriptor {
          * into [colorConstructor]. Returns `null` for any other argument count.
          */
         fun colorFromArgumentsSimple(
-            argumentMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
+            argumentMap: ArgumentMap,
+            colorConstructor: (Double, Double, Double, Double) -> ColorModel<*>
         ): Color? = argumentMap.colorComponents.let {
             when (it.size) {
                 3 -> colorConstructor(it[0], it[1], it[2], 1.0)
@@ -283,7 +297,8 @@ internal enum class ColorRGBaDescriptor {
          * white point (defaulting to [ColorXYZa.NEUTRAL]) to [colorConstructor] alongside the components.
          */
         fun <T> colorFromArgumentsRef(
-            argumentMap: ArgumentMap, colorConstructor: (Double, Double, Double, Double, ColorXYZa) -> T
+            argumentMap: ArgumentMap,
+            colorConstructor: (Double, Double, Double, Double, ColorXYZa) -> T
         ): Color? where T : ColorModel<T>, T : ReferenceWhitePoint {
             val components = argumentMap.toList().sortedBy { it.first.index }
             if (components.size !in 3..5) return null

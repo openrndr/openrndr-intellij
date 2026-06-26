@@ -38,7 +38,7 @@ dependencies {
         // symbols for ColorRGBa & friends, and every gutter/completion resolution silently fails.
         intellijIdeaCommunity("2025.2")
 
-        // Test framework required for BasePlatformTestCase/myFixture (IntelliJ Platform Gradle Plugin 2.x).
+        // Test framework required for BasePlatformTestCase/myFixture (IntelliJ Platform Gradle Pluemgin 2.x).
         // The Java framework supplies IdeaTestUtil and DefaultLightProjectDescriptor used by the tests.
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
