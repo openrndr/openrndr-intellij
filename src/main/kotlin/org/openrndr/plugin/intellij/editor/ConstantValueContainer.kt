@@ -1,6 +1,7 @@
 package org.openrndr.plugin.intellij.editor
 
 import org.openrndr.color.ColorXYZa
+import org.openrndr.color.Linearity
 
 /**
  * A resolved color-constructor argument value.
@@ -18,15 +19,20 @@ internal sealed class ConstantValueContainer {
     class WhitePoint(val value: ColorXYZa) : ConstantValueContainer()
 
     /**
-     * A known argument that is not a color component, e.g. the `linearity` enum argument of
-     * [org.openrndr.color.ColorRGBa]. Kept so the argument map can be complete
-     * but ignored by all consumers that only look at color components.
+     * The resolved `linearity` enum argument of [org.openrndr.color.ColorRGBa]. It is not a color component,
+     * so consumers that only look at components ignore it, but it determines whether the components are
+     * interpreted as sRGB or linear light and therefore how the color is rendered (see
+     * [org.openrndr.plugin.intellij.utils.ColorUtil.toAWTColor]).
      */
-    object Other : ConstantValueContainer()
+    class LinearityArg(val value: Linearity) : ConstantValueContainer()
 
     companion object {
         private val ALPHA = Constant(1.0)
         private val REF = WhitePoint(ColorXYZa.NEUTRAL)
+
+        /** The default `linearity` of the `ColorRGBa(...)` constructor when the argument is omitted. */
+        val DEFAULT_LINEARITY = Linearity.LINEAR
+        private val LINEARITY = LinearityArg(DEFAULT_LINEARITY)
 
         /**
          * The default value of a parameter we omitted from a call, when we know what that default is
@@ -39,7 +45,7 @@ internal sealed class ConstantValueContainer {
         fun getDefaultValueIfKnown(paramName: String, shorthand: Boolean): ConstantValueContainer? = when {
             paramName == "alpha" || (paramName == "a" && shorthand) -> ALPHA
             paramName == "ref" -> REF
-            paramName == "linearity" -> Other
+            paramName == "linearity" -> LINEARITY
             else -> null
         }
     }

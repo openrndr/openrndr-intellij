@@ -5,12 +5,24 @@ import org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall
 import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.resolution.successfulVariableAccessCall
 import org.jetbrains.kotlin.analysis.api.resolution.symbol
-import org.jetbrains.kotlin.analysis.api.symbols.*
+import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaVariableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KaNamedSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.KtBinaryExpression
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtPrefixExpression
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtPsiUtil
+import org.jetbrains.kotlin.psi.KtValueArgument
+import org.openrndr.color.Linearity
 import org.openrndr.plugin.intellij.editor.ConstantValueContainer
 
 /**
@@ -98,7 +110,7 @@ internal fun KaSession.computeValueArguments(call: KaFunctionCall<*>): ArgumentM
 
                 // The linearity enum is the only non-numeric, non-ref parameter of the color models; it is
                 // not a color component, so we keep it as an ignored argument.
-                name == "linearity" -> ConstantValueContainer.Other
+                name == "linearity" -> resolveLinearity(argExpression)
 
                 // Every other parameter is a numeric (or hex) color component. If we cannot fold it to a
                 // compile-time constant, we must fail the whole resolution (returning null), otherwise the
@@ -109,6 +121,16 @@ internal fun KaSession.computeValueArguments(call: KaFunctionCall<*>): ArgumentM
                 }
             }
             put(ColorArgument(index, name), container)
+        }
+
+        // openrndr's double `rgb(...)` shorthand carries no `linearity` parameter, yet its result linearity
+        // changed from sRGB to linear in openrndr 0.5.0 (commit 01d4f82). Because we compute the swatch with
+        // our *bundled* openrndr — which can't observe the project's behavior — we detect the project's
+        // openrndr-color version from the resolved `rgb` symbol and record the matching linearity, which the
+        // RGB descriptor then honors instead of calling the bundled `rgb()`.
+        if (callableShortName(symbol) == "rgb") {
+            val linearity = rgbShorthandLinearity(openrndrColorVersionOf(symbol))
+            put(ColorArgument(symbol.valueParameters.size, "linearity"), ConstantValueContainer.LinearityArg(linearity))
         }
     }
 }
@@ -207,6 +229,46 @@ private fun KaSession.evaluateConstant(expression: KtExpression, depth: Int = 0)
         else -> null
     }
 }
+
+/**
+ * Resolves a `linearity` argument expression (e.g. `Linearity.LINEAR`) to its [Linearity] value. Falls back to
+ * the constructor default ([ConstantValueContainer.DEFAULT_LINEARITY]) for anything we cannot fold to one of the
+ * two known enum entries — including the uncommon case of an indirection like `val l = Linearity.SRGB; ...(l)`.
+ */
+private fun KaSession.resolveLinearity(expression: KtExpression): ConstantValueContainer.LinearityArg {
+    val name = expression.resolveToCall()?.successfulVariableAccessCall()?.symbol
+        ?.let { it as? KaNamedSymbol }?.name?.identifier
+    val value = when (name) {
+        Linearity.SRGB.name -> Linearity.SRGB
+        Linearity.LINEAR.name -> Linearity.LINEAR
+        else -> ConstantValueContainer.DEFAULT_LINEARITY
+    }
+    return ConstantValueContainer.LinearityArg(value)
+}
+
+private val OPENRNDR_COLOR_JAR = Regex("""openrndr-color(?:-jvm)?-(\d+)\.(\d+)\.\d+""")
+
+/**
+ * The `openrndr-color` version, as (major, minor), of the library the resolved [symbol] comes from, or `null`
+ * if it can't be read off the classpath. We key off the resolved symbol (rather than one project-wide version)
+ * so a call that resolves to an unusual transitive openrndr is still attributed to the version that applies.
+ */
+internal fun KaSession.openrndrColorVersionOf(symbol: KaSymbol): Pair<Int, Int>? {
+    val path = symbol.psi?.containingFile?.virtualFile?.path ?: return null
+    return parseOpenrndrColorMajorMinor(path)
+}
+
+/** Extracts the (major, minor) of an `openrndr-color` jar from [path], or `null` if it isn't found there. */
+internal fun parseOpenrndrColorMajorMinor(path: String): Pair<Int, Int>? =
+    OPENRNDR_COLOR_JAR.find(path)?.let { it.groupValues[1].toInt() to it.groupValues[2].toInt() }
+
+/**
+ * The linearity of openrndr's double `rgb(...)` shorthand for the given openrndr-color [version]: sRGB before
+ * 0.5.0, linear from 0.5.0 on (openrndr commit 01d4f82, which also added the sRGB `rgb(Int, …)` overload).
+ * Falls back to sRGB when the version is unknown — matching openrndr's long-standing behavior and our bundle.
+ */
+internal fun rgbShorthandLinearity(version: Pair<Int, Int>?): Linearity =
+    if (version != null && (version.first > 0 || version.second >= 5)) Linearity.LINEAR else Linearity.SRGB
 
 /** Resolves a `ref` argument expression (a static white point or an explicit `ColorXYZa(...)`). */
 private fun KaSession.resolveWhitePoint(expression: KtExpression): ConstantValueContainer.WhitePoint? {

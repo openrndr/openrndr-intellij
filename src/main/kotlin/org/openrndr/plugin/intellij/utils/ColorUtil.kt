@@ -9,17 +9,17 @@ import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.resolution.successfulVariableAccessCall
 import org.jetbrains.kotlin.analysis.api.resolution.symbol
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtImportDirective
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfTypes2
 import org.openrndr.color.ColorModel
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.ColorXYZa
 import org.openrndr.color.Linearity
 import org.openrndr.plugin.intellij.editor.ColorRGBaDescriptor
-import org.openrndr.plugin.intellij.utils.ColorUtil.COLOR_PROVIDER_PATTERN
-import org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor
-import org.openrndr.plugin.intellij.utils.ColorUtil.staticColorMap
-import org.openrndr.plugin.intellij.utils.ColorUtil.staticWhitePointMap
 import java.awt.Color
 import java.lang.reflect.Modifier
 import kotlin.reflect.full.memberProperties
@@ -42,8 +42,17 @@ internal object ColorUtil {
     /** A reference opaque white used as the "neutral" starting color when computing default linearities. */
     val defaultColorRGBa = ColorRGBa(1.0, 1.0, 1.0, 1.0, Linearity.LINEAR)
 
-    /** Converts any openrndr color model to an AWT [Color], clamping each (sRGB) component into `[0, 1]`. */
-    fun ColorModel<*>.toAWTColor(): Color = toRGBa().run {
+    /**
+     * Converts any openrndr color model to the AWT [Color] that should be shown on screen, clamping each
+     * component into `[0, 1]`.
+     *
+     * A screen displays sRGB-encoded values, so we must gamma-encode before reading components: many models'
+     * [ColorModel.toRGBa] returns a **linear**-light [ColorRGBa] (e.g. the `ColorRGBa(...)` constructor, whose
+     * `linearity` defaults to [Linearity.LINEAR], and the LAB/XYZ/LCH/LUV/OKLab/Yxy families), and showing those
+     * linear components raw would render the swatch too dark. [ColorRGBa.toSRGB] is a no-op for colors that are
+     * already sRGB (HSL/HSV/`rgb()`/`fromHex`/the static constants), so this is correct for every model.
+     */
+    fun ColorModel<*>.toAWTColor(): Color = toRGBa().toSRGB().run {
         Color(
             r.toFloat().coerceIn(0f, 1f),
             g.toFloat().coerceIn(0f, 1f),
@@ -52,9 +61,14 @@ internal object ColorUtil {
         )
     }
 
-    /** Converts an AWT [Color] back into a [ColorRGBa] of the given [linearity] (sRGB by default). */
-    fun Color.toColorRGBa(linearity: Linearity = Linearity.LINEAR) = getComponents(null).let { (r, g, b, a) ->
-        ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), linearity)
+    /**
+     * Converts an AWT [Color] (always sRGB) into a [ColorRGBa] of the given [linearity], **converting** the
+     * components into that linearity rather than merely relabelling them. This is the inverse of [toAWTColor]:
+     * `someColor.toColorRGBa(l).toAWTColor() == someColor` for any [l], which is what makes the color picker
+     * round-trip — a color written into a `Linearity.LINEAR` expression is stored as its linear-light values.
+     */
+    fun Color.toColorRGBa(linearity: Linearity = Linearity.SRGB) = getComponents(null).let { (r, g, b, a) ->
+        ColorRGBa(r.toDouble(), g.toDouble(), b.toDouble(), a.toDouble(), Linearity.SRGB).toLinearity(linearity)
     }
 
     /**

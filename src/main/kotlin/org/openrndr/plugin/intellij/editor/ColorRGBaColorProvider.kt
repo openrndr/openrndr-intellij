@@ -21,6 +21,7 @@ import org.openrndr.plugin.intellij.OpenrndrBundle
 import org.openrndr.plugin.intellij.utils.ResolvedArgInfo
 import org.openrndr.plugin.intellij.utils.callableShortName
 import org.openrndr.plugin.intellij.utils.computeValueArguments
+import org.openrndr.plugin.intellij.utils.linearity
 import org.openrndr.plugin.intellij.utils.isColorRGBaStatic
 import org.openrndr.plugin.intellij.utils.resolvedColorArguments
 import org.openrndr.plugin.intellij.utils.ColorUtil.resolveToColor
@@ -92,7 +93,8 @@ class ColorRGBaColorProvider : ElementColorProvider {
             val argumentMap = computeValueArguments(functionCall)
             val ref = argumentMap?.values
                 ?.firstNotNullOfOrNull { it as? ConstantValueContainer.WhitePoint }?.value
-            val colorArguments = descriptor.argumentsFromColor(color, ref)
+            val linearity = argumentMap?.linearity ?: ConstantValueContainer.DEFAULT_LINEARITY
+            val colorArguments = descriptor.argumentsFromColor(color, ref, linearity)
             return ColorReplacement.Arguments(resolvedColorArguments(functionCall), colorArguments)
         }
 
@@ -115,7 +117,10 @@ class ColorRGBaColorProvider : ElementColorProvider {
              * after numerous approaches, this actually started to seem like the only one viable.
              */
             if (!isColorRGBaStatic(variableAccess.symbol)) return null
-            val hexArgument = ColorRGBaDescriptor.FromHex.argumentsFromColor(color, null).firstOrNull() ?: return null
+            // A static `ColorRGBa.RED` is rewritten as `fromHex(...)`, which ignores linearity (it emits a hex
+            // string), so the value passed here is irrelevant.
+            val hexArgument = ColorRGBaDescriptor.FromHex
+                .argumentsFromColor(color, null, ConstantValueContainer.DEFAULT_LINEARITY).firstOrNull() ?: return null
             return ColorReplacement.StaticColorRGBa(hexArgument)
         }
 

@@ -1,6 +1,7 @@
 package org.openrndr.plugin.intellij.utils
 
 import org.openrndr.color.ColorXYZa
+import org.openrndr.color.Linearity
 import org.openrndr.plugin.intellij.editor.ConstantValueContainer
 
 /**
@@ -23,6 +24,15 @@ internal val ArgumentMap.colorComponents: List<Double>
         .mapNotNull {
             (it.second as? ConstantValueContainer.Constant)?.value as? Double
         }
+
+/**
+ * The resolved `linearity` of a `ColorRGBa(...)` call, defaulting to the constructor's own default
+ * ([ConstantValueContainer.DEFAULT_LINEARITY]) when no `linearity` argument is present (e.g. for color
+ * models other than [org.openrndr.color.ColorRGBa], which have no such argument).
+ */
+internal val ArgumentMap.linearity: Linearity
+    get() = values.firstNotNullOfOrNull { (it as? ConstantValueContainer.LinearityArg)?.value }
+        ?: ConstantValueContainer.DEFAULT_LINEARITY
 
 internal fun ArgumentMap.computeWhitePoint(): ColorXYZa? = colorComponents.let {
     when (it.size) {

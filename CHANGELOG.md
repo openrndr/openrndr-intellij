@@ -22,6 +22,8 @@
 - Fix color picker not updating source code after update
 
 ### Fixed
+- Fix color linearity being ignored
+- Deal with linearity difference in rgb() between openrndr 0.4.5 and 0.5.0
 
 ## [1.1.2] - 2023-06-11
 

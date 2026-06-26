@@ -82,7 +82,7 @@ private fun KtFile.findColorProperty(name: String): KtProperty? = PsiTreeUtil.fi
  */
 private fun LookupElement.decorateWithIcon(name: String, file: KtFile) =
     object : LookupElementDecorator<LookupElement>(this) {
-        // Direct set an icon
+        // Directly set an icon
         override fun renderElement(presentation: LookupElementPresentation) {
             super.renderElement(presentation)
             val color = ColorUtil.staticColorMap[name] ?: return
