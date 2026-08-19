@@ -11,9 +11,7 @@ plugins {
     alias(libs.plugins.versions)
 }
 
-// TODO:
-// Test the changelog functionality.
-// Test signing and publishing.
+// TODO: Test signing and publishing.
 
 dependencies {
     testImplementation(libs.junit)
