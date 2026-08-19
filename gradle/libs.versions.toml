@@ -1,8 +1,15 @@
 [versions]
 openrndr = "0.4.5"
 orx = "0.4.5"
+junit = "4.13.2"
+versions = "0.61.0"
+intellijIdea = "2025.2.6.2"
 
 [libraries]
 openrndr-color = { group = "org.openrndr", name = "openrndr-color", version.ref = "openrndr" }
 openrndr-math = { group = "org.openrndr", name = "openrndr-math", version.ref = "openrndr" }
 orx-color = { group = "org.openrndr.extra", name = "orx-color", version.ref = "orx" }
+junit = { group = "junit", name = "junit", version.ref = "junit"}
+
+[plugins]
+versions = { id = "com.github.ben-manes.versions", version.ref = "versions" }

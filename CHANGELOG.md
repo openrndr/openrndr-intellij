@@ -17,6 +17,7 @@
 - Update to simplified plugin template
 - Update gradle-intellij-plugin to 1.16.1
 - Raise minimum supported IntelliJ version to 2023.2 due to https://youtrack.jetbrains.com/issue/KT-58021
+- Simplified build.gradle.kts based on the upstream plugin template
 
 ### Removed
 - Fix tests not passing after update

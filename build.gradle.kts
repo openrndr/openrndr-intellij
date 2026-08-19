@@ -1,3 +1,4 @@
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 // Largely based on intellij-platform-plugin-template
@@ -7,19 +8,15 @@ plugins {
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.intellij.platform")
     id("org.jetbrains.changelog")
-    id("com.github.ben-manes.versions")
+    alias(libs.plugins.versions)
 }
 
 // TODO:
-// The plugin template was greatly simplified by JetBrains.
-// It seems like the new template has defaults that remove the need for some of this code.
-// As it is, the plugin builds and work, and tests pass. But the changelog functionality,
-// extracting the description from the README, signing and publishing need all to be tested.
-// It's possible that some of the commented out code must be brought back.
-// Once tested, the unused parts can be deleted.
+// Test the changelog functionality.
+// Test signing and publishing.
 
 dependencies {
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
 
     implementation(libs.openrndr.color) { isTransitive = false }
     implementation(libs.openrndr.math) { isTransitive = false }
@@ -27,7 +24,7 @@ dependencies {
 
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {
-        intellijIdea("2025.2.6.2")
+        intellijIdea(libs.versions.intellijIdea.get())
 
         // 2025.2 bundles Kotlin 2.2, whose plugin can deserialize the openrndr 0.4.5 jars' Kotlin 2.2.0
         // metadata. Older platforms (2024.2.5 bundled kotlinc 1.9.24) cannot read it, so the IDE builds no
@@ -49,18 +46,16 @@ tasks.test {
     maxHeapSize = "2g"
 }
 
-tasks {
-    dependencyUpdates {
-        gradleReleaseChannel = "current"
+tasks.named<DependencyUpdatesTask>("dependencyUpdates") {
+    gradleReleaseChannel = "current"
 
-        val nonStableKeywords = listOf("alpha", "beta", "rc")
+    val nonStableKeywords = listOf("alpha", "beta", "rc", "dev")
 
-        fun isNonStable(version: String) = nonStableKeywords.any {
-            version.lowercase().contains(it)
-        }
+    fun isNonStable(version: String) = nonStableKeywords.any {
+        version.lowercase().contains(it)
+    }
 
-        rejectVersionIf {
-            isNonStable(candidate.version) && !isNonStable(currentVersion)
-        }
+    rejectVersionIf {
+        isNonStable(candidate.version) && !isNonStable(currentVersion)
     }
 }
