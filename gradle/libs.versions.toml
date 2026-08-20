@@ -1,15 +1,15 @@
 [versions]
-kotlin = "1.9.22"
-openrndr = "0.4.4"
-orx = "0.4.4"
+openrndr = "0.4.5"
+orx = "0.4.5"
+junit = "4.13.2"
+versions = "0.61.0"
+intellijIdea = "2025.2.6.2"
 
 [libraries]
 openrndr-color = { group = "org.openrndr", name = "openrndr-color", version.ref = "openrndr" }
 openrndr-math = { group = "org.openrndr", name = "openrndr-math", version.ref = "openrndr" }
 orx-color = { group = "org.openrndr.extra", name = "orx-color", version.ref = "orx" }
+junit = { group = "junit", name = "junit", version.ref = "junit"}
 
 [plugins]
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-intellij = { id = "org.jetbrains.intellij", version = "1.16.1" }
-changelog = { id = "org.jetbrains.changelog", version = "2.2.0" }
-kover = { id = "org.jetbrains.kotlinx.kover", version = "0.7.3" }
+versions = { id = "io.github.ben-manes.versions", version.ref = "versions" }

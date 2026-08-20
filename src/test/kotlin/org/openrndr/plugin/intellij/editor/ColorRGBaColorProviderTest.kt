@@ -1,21 +1,40 @@
 package org.openrndr.plugin.intellij.editor
 
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ui.ColorIcon
 import com.intellij.util.ui.ColorsIcon
 import org.intellij.lang.annotations.Language
+import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
+import org.jetbrains.kotlin.analysis.api.resolution.symbol
 import org.jetbrains.kotlin.idea.KotlinFileType
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.openrndr.color.*
 import org.openrndr.extra.color.presets.HOT_PINK
 import org.openrndr.extra.color.spaces.ColorOKLABa
 import org.openrndr.plugin.intellij.ColorRGBaTestCase
 import org.openrndr.plugin.intellij.utils.ColorUtil.toAWTColor
+import org.openrndr.plugin.intellij.utils.openrndrColorVersionOf
 import java.awt.Color
 
+/**
+ * Verifies that [org.openrndr.plugin.intellij.editor.ColorRGBaColorProvider] produces the correct gutter color
+ * for the many ways a color can be written: static constants, the `ColorRGBa`/`rgb`/`fromHex` forms, every orx
+ * color model, named and defaulted arguments, constant-folded references, reference white points, and renamed
+ * imports. Each test renders a snippet into a fixture and asserts the gutter swatch's color.
+ *
+ * The `assertGutterIconColor*` helpers cover the single-swatch case (a [ColorIcon]); the `*MultiColor` variants
+ * cover lines that yield several swatches at once (a [ColorsIcon]), e.g. a color plus its reference white point.
+ */
 class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
+    /** Asserts the gutter swatch for the single color [colorRGBaColor] expression equals [expected]. */
     private fun assertGutterIconColor(
         expected: Color, @Language("kt", prefix = IMPORTS_PREFIX, suffix = "}") colorRGBaColor: String
     ) = assertGutterIconColorManual(expected, colorRGBaExpressionTemplate(colorRGBaColor))
 
+    /** As [assertGutterIconColor] but takes the full source [code], for tests that need their own preamble. */
     private fun assertGutterIconColorManual(expected: Color, code: String) {
         myFixture.configureByText(KotlinFileType.INSTANCE, code)
         val gutterMarks = myFixture.findAllGutters()
@@ -67,6 +86,42 @@ class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
         assertGutterIconColor(ColorRGBa(1.0, 0.4, 0.2, 1.0).toAWTColor(), "ColorRGBa(1.0, 0.4, 0.2, 1.0)")
     }
 
+    /**
+     * The `linearity` argument must change the rendered swatch: identical components are different colors in
+     * sRGB vs linear light. The sRGB assertion (whose expected value is the raw mid-gray, not the gamma-encoded
+     * one) pins that we honor the argument rather than always rendering with the LINEAR default.
+     */
+    fun testColorRGBaLinearityIsHonored() {
+        val srgbGray = ColorRGBa(0.5, 0.5, 0.5, 1.0, Linearity.SRGB)
+        val linearGray = ColorRGBa(0.5, 0.5, 0.5, 1.0, Linearity.LINEAR)
+        assertFalse("sRGB and linear gray must render differently", srgbGray.toAWTColor() == linearGray.toAWTColor())
+        assertGutterIconColor(srgbGray.toAWTColor(), "ColorRGBa(0.5, 0.5, 0.5, 1.0, Linearity.SRGB)")
+        assertGutterIconColor(linearGray.toAWTColor(), "ColorRGBa(0.5, 0.5, 0.5, 1.0, Linearity.LINEAR)")
+        // The constructor's own default is LINEAR, so the no-linearity form matches the LINEAR one.
+        assertGutterIconColor(linearGray.toAWTColor(), "ColorRGBa(0.5, 0.5, 0.5)")
+    }
+
+    /**
+     * `rgb(...)`'s linearity is version-dependent (sRGB before openrndr 0.5.0, linear after), so we render it
+     * using the project's openrndr-color version. The test/bundled openrndr is 0.4.5, so the resolved `rgb`
+     * symbol must be attributed to that version — verifying the symbol→jar retrieval that feeds the choice
+     * (parsing and the version→linearity mapping are unit-tested in DescriptorUtilTest).
+     */
+    @OptIn(KaAllowAnalysisOnEdt::class)
+    fun testRgbShorthandResolvesOpenrndrColorVersion() {
+        myFixture.configureByText(KotlinFileType.INSTANCE, colorRGBaExpressionTemplate("rgb(0.5)"))
+        val rgbCall = PsiTreeUtil.collectElementsOfType(myFixture.file, KtCallExpression::class.java)
+            .first { it.calleeExpression?.text == "rgb" }
+        // The test framework runs on the EDT, where analysis needs the same opt-in the production picker uses.
+        allowAnalysisOnEdt {
+            analyze(rgbCall) {
+                val symbol = rgbCall.resolveToCall()?.successfulFunctionCallOrNull()?.symbol
+                    ?: error("rgb did not resolve")
+                assertEquals(0 to 4, openrndrColorVersionOf(symbol))
+            }
+        }
+    }
+
     fun testColorRGBaFromHex() {
         assertGutterIconColor(ColorRGBa.MAGENTA.toAWTColor(), "ColorRGBa.fromHex(\"#ff00ff\")")
     }
@@ -95,7 +150,6 @@ class ColorRGBaColorProviderTest : ColorRGBaTestCase() {
         assertGutterIconColor(rgb("#0ff").toAWTColor(), "rgb(\"#0ff\")")
     }
 
-    @Suppress("MayBeConstant")
     fun testColorRGBaConstructorWithConst() {
         @Language("kt")
         val prelude = """
