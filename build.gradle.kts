@@ -57,3 +57,12 @@ tasks.named<DependencyUpdatesTask>("dependencyUpdates") {
         isNonStable(candidate.version) && !isNonStable(currentVersion)
     }
 }
+
+intellijPlatform {
+    pluginVerification {
+        freeArgs = listOf(
+            "-mute",
+            "TemplateWordInPluginId,ForbiddenPluginIdPrefix"
+        )
+    }
+}

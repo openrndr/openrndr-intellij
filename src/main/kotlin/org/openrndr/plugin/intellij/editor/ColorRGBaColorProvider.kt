@@ -63,8 +63,8 @@ class ColorRGBaColorProvider : ElementColorProvider {
 
         // Resolution must happen outside the write command: the Analysis API forbids `analyze {}` from a
         // write action. We extract everything we need as plain data / PSI here, then mutate the PSI below.
-        // (it is a compile error, not just a runtime one, because it can freeze the IDE), so we cannot resolve
-        // here. Instead we defer with invokeLater: by the time the runnable executes the platform's write action
+        // (it is a compile-error, not just a runtime one, because it can freeze the IDE), so we cannot resolve
+        // here. Instead, we defer with invokeLater: by the time the runnable executes the platform's write action
         // has finished, so resolution runs on the EDT but outside any write lock (allowed via the opt-in), and we
         // then perform the PSI edit in our own write command so it stays a single undoable step.
         ApplicationManager.getApplication().invokeLater {

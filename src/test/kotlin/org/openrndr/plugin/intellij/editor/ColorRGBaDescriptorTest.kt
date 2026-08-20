@@ -39,7 +39,7 @@ class ColorRGBaDescriptorTest : TestCase() {
     }
 
     fun testRgbIntOverloadIsSrgbNotLinear() {
-        // A mid gray Int rgb is plain sRGB and must NOT be gamma-encoded the way the linear double overload is.
+        // A mid-gray Int rgb is plain sRGB and must NOT be gamma-encoded the way the linear double overload is.
         val gray = ColorRGBaDescriptor.RGB.colorFromArguments(arguments(128, 128, 128, 255))
         assertEquals(ColorRGBa(128 / 255.0, 128 / 255.0, 128 / 255.0, 1.0, Linearity.SRGB).toAWTColor(), gray)
         assertFalse(

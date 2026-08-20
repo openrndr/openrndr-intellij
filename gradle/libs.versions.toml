@@ -12,4 +12,4 @@ orx-color = { group = "org.openrndr.extra", name = "orx-color", version.ref = "o
 junit = { group = "junit", name = "junit", version.ref = "junit"}
 
 [plugins]
-versions = { id = "com.github.ben-manes.versions", version.ref = "versions" }
+versions = { id = "io.github.ben-manes.versions", version.ref = "versions" }

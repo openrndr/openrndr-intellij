@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-08-20
+
+### Changed
+
+- Add a -mute flag to pass verification (plugin class path includes `intellij`)
+- Update to Gradle 9.7.1
+- Fix minor (mostly syntax) warnings
+
 ## [1.2.6] - 2026-08-19
 
 ### Added
@@ -73,7 +81,8 @@
 - ColorRGBa preview in debugger and expression evaluation dialog
 - ColorRGBa preview in the auto-completion dialog
 
-[Unreleased]: https://github.com/openrndr/openrndr-intellij/compare/v1.2.6...HEAD
+[Unreleased]: https://github.com/openrndr/openrndr-intellij/compare/v1.2.7...HEAD
+[1.2.7]: https://github.com/openrndr/openrndr-intellij/compare/v1.2.6...v1.2.7
 [1.2.6]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.2...v1.2.6
 [1.1.2]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/openrndr/openrndr-intellij/compare/v1.1.0...v1.1.1

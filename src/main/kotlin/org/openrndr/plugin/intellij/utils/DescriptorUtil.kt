@@ -89,7 +89,7 @@ internal fun KaSession.computeValueArguments(call: KaFunctionCall<*>): ArgumentM
     val symbol = call.symbol
     val shorthand = isShorthandFunction(symbol)
 
-    // parameter name -> the argument expression that was explicitly passed for it
+    // parameter name -> the argument expression explicitly passed for it
     val providedByName: Map<String, KtExpression> = buildMap {
         for ((argExpression, parameterSignature) in call.argumentMapping) {
             put(parameterSignature.name.identifier, argExpression)
@@ -249,8 +249,8 @@ private fun KaSession.resolveLinearity(expression: KtExpression): ConstantValueC
 }
 
 // Matches the openrndr-color artifact file name across Kotlin targets, capturing (major, minor):
-//  - JVM:               openrndr-color-jvm-0.5.0.jar
-//  - common metadata:   openrndr-color-0.5.0.jar      (no platform classifier)
+//  - JVM: openrndr-color-jvm-0.5.0.jar
+//  - common metadata: openrndr-color-0.5.0.jar (no platform classifier)
 //  - JS / native klibs: openrndr-color-js-0.5.0.klib, openrndr-color-iosx64-0.5.0.klib, …
 // The platform classifier(s) are optional and each must start with a letter, so they never swallow the
 // (digit-leading) version. We only ever apply this to the jar/klib of a resolved `org.openrndr.color` symbol,
