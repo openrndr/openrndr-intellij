@@ -9,7 +9,7 @@ Support for the [OPENRNDR framework](https://github.com/openrndr/openrndr) in Ko
 
 * ColorRGBa preview and color picker in the editor gutter
 * ColorRGBa preview in the debugger view and autocomplete dialog
-
+ 
 ### ColorRGBa preview in the editor
 
 <img width="463" alt="ColorRGBa preview in the editor" src="https://user-images.githubusercontent.com/6316604/181760872-87834eb6-71dd-4d01-9fdf-4fbf56528336.png">
