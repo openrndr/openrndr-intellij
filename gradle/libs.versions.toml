@@ -2,7 +2,7 @@
 openrndr = "0.4.5"
 orx = "0.4.5"
 junit = "4.13.2"
-versions = "0.61.0"
+versions = "0.62.0"
 intellijIdea = "2025.2.6.2"
 
 [libraries]
