@@ -1,15 +1,13 @@
 [versions]
-openrndr = "0.4.5"
-orx = "0.4.5"
 junit = "4.13.2"
+opentest4j = "1.3.0"
 versions = "0.66.0"
-intellijIdea = "2025.2.6.2"
+# The IDE to build against, test with and launch with `./gradlew runIde`; also the lowest supported version
+intellijIdea = "2026.2"
 
 [libraries]
-openrndr-color = { group = "org.openrndr", name = "openrndr-color", version.ref = "openrndr" }
-openrndr-math = { group = "org.openrndr", name = "openrndr-math", version.ref = "openrndr" }
-orx-color = { group = "org.openrndr.extra", name = "orx-color", version.ref = "orx" }
-junit = { group = "junit", name = "junit", version.ref = "junit"}
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+opentest4j = { group = "org.opentest4j", name = "opentest4j", version.ref = "opentest4j" }
 
 [plugins]
 versions = { id = "io.github.ben-manes.versions", version.ref = "versions" }

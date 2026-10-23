@@ -1,0 +1,7 @@
+<!-- Loaded only when the Web Browser (JCEF) plugin is installed -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- OPENRNDR guide tab that keeps guide links inside the IDE -->
+        <fileEditorProvider implementation="org.openrndr.plugin.intellij.OpenrndrGuideBrowser$Provider"/>
+    </extensions>
+</idea-plugin>

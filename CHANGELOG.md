@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Added
+
+- Completion lists in sections with KDoc summaries: colors, `drawer.`, `program`, mouse and keyboard events,
+  vectors, List/Set/Map/String, render targets, buffers, textures, shaders, shade and compute styles,
+  vertex formats and filters
+- orx-compositor support: sections in `compose { }` and `layer { }`, and every filter on the classpath in
+  `post(…)` and `blend(…)`, sectioned by orx-fx package
+- Members annotated with orx-parameters (`@DoubleParameter`, `@ColorParameter`, …) listed first, in any class
+- GLSL in `fragmentTransform`, `vertexTransform`, `computeTransform` and the preambles, with the GLSL Support
+  plugin (suggested when missing)
+- Program structure inspection with quick fixes
+- Asset path completion and navigation in `loadImage`, `loadFont` and the other loaders
+- OPENRNDR Mode (View | OPENRNDR Mode): a minimal layout with play and stop buttons, New and Duplicate Program,
+  New OPENRNDR Project, the OPENRNDR guide in an editor tab and a clean console
+
+### Changed
+
+- Rewritten plugin: colors are evaluated with the project's own OPENRNDR instead of a bundled copy, so all
+  color models and orx color spaces work with any OPENRNDR version
+- Requires IntelliJ IDEA 2026.2 or later, and Java 25 to build
+- The Kotlin plugin and the JCEF browser are optional dependencies
+
 ## [1.2.7] - 2026-08-20
 
 ### Changed
