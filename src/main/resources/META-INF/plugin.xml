@@ -122,6 +122,10 @@
                     class="org.openrndr.plugin.intellij.ShowProjectFolderAction"
                     text="Show Project Folder"
                     description="Open the project root in the system file manager"/>
+            <action id="Openrndr.ProjectSettings"
+                    class="org.openrndr.plugin.intellij.ProjectSettingsAction"
+                    text="Project Settings..."
+                    description="Edit the project name, group and version, the OPENRNDR and orx versions and the snapshot repositories, then reload the Gradle project"/>
             <add-to-group group-id="MainToolbarRight" anchor="after" relative-to-action="Openrndr.EditGroup"/>
         </group>
 

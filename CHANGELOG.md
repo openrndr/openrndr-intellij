@@ -16,6 +16,8 @@
 - Asset path completion and navigation in `loadImage`, `loadFont` and the other loaders
 - OPENRNDR Mode (View | OPENRNDR Mode): a minimal layout with play and stop buttons, New and Duplicate Program,
   New OPENRNDR Project, the OPENRNDR guide in an editor tab and a clean console
+- Project Settings in OPENRNDR Mode: edit the project name, group and version, the OPENRNDR and orx versions
+  and the snapshot repositories, then reload the Gradle project
 
 ### Changed
 
