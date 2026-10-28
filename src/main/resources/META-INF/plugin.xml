@@ -35,6 +35,8 @@
         <p><b>View | OPENRNDR Mode</b> (Ctrl+Alt+P) switches to a minimal layout and back: only the editor and the
         Run console, a play and stop button that run the current program, New and Duplicate Program, the OPENRNDR
         guide in an editor tab, New OPENRNDR Project (from openrndr-template) and a clean console.</p>
+        <p>Programs in the guide get a play button that copies them into the project and runs them, adding the orx
+        modules they need to <code>build.gradle.kts</code>.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -47,6 +49,10 @@
         <internalFileTemplate name="OPENRNDR Program"/>
 
         <notificationGroup id="OPENRNDR Mode" displayType="BALLOON"/>
+        <!-- Running programs from the guide: orx modules added, Gradle reloads, projects that cannot run them -->
+        <notificationGroup id="OPENRNDR Guide" displayType="BALLOON"/>
+        <!-- Programs copied from the guide are not offered to version control (no "Add to Git?" question) -->
+        <vcs.fileListenerIgnoredFilesProvider implementation="org.openrndr.plugin.intellij.GuidePrograms$VcsFilter"/>
 
         <!-- Color swatches for OPENRNDR colors in the debugger; first, ahead of Kotlin's class renderer -->
         <debugger.compoundRendererProvider implementation="org.openrndr.plugin.intellij.OpenrndrDebuggerColors" order="first"/>

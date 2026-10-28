@@ -26,9 +26,27 @@ everything as it was. The theme and color scheme are left alone.
 | ■ **Stop** | Shown only while something is running; stops it |
 | **New Program…** | OPENRNDR projects: creates `Name.kt` from the OPENRNDR program template. Dashes and spaces aren't allowed, and the first letter is made uppercase. |
 | **Duplicate Program…** | OPENRNDR projects: copies the current program to a new file and suggests the next number (`Sketch01` → `Sketch02`, `Sketch` → `Sketch01`) |
-| **OPENRNDR Guide** | OPENRNDR projects: opens [guide.openrndr.org](https://guide.openrndr.org) in an editor tab. Guide links stay in the tab, and other links open in your browser. |
+| **OPENRNDR Guide** | OPENRNDR projects: opens [guide.openrndr.org](https://guide.openrndr.org) in an editor tab. Guide links stay in the tab, and other links open in your browser. Programs in the guide can be run from there; see below. |
 | **Reformat Code**, **Comment with Line Comment**, **Rename** | The usual editor actions, as buttons |
 | **Show Project Folder in Finder** | Opens the project root in Finder (Explorer or your file manager on other systems) |
+
+### Running programs from the guide
+
+In the guide tab, each code block that is a whole program (it has a `fun main`) gets a green ▶ next to its copy
+button. Clicking it copies the program into the project and runs it:
+
+- **Where:** `src/main/kotlin/guide/`, in the `guide` package, named after the page title and the block's position
+  on the page, plus a letter: the second block on *Drawing circles, rectangles and lines* becomes
+  `DrawingCirclesRectanglesAndLines02a.kt`.
+- **Your edits are kept:** a copy that still matches the guide is reused. Once you have edited it, the next click
+  makes a new copy with the next letter (`…02b.kt`) and leaves yours alone.
+- **Not added to git:** the copies stay unversioned, without the "Add file to Git?" question; add the ones you want
+  to keep yourself.
+- **orx modules:** when the program imports from orx modules the project doesn't have, they are added to
+  `build.gradle.kts` as `implementation(orx.…)` (a commented-out line for the module is uncommented) and the Gradle
+  project is reloaded before the program runs. This needs a project made from the current
+  [openrndr-template](https://github.com/openrndr/openrndr-template), which lists orx modules that way; for other
+  projects the plugin says which modules are missing and doesn't write the program.
 
 ### Console
 
@@ -187,6 +205,11 @@ Requires JDK 25. The Gradle daemon runs on JDK 25 too (`gradle/gradle-daemon-jvm
 
 The run configurations in `.run/` (Run Plugin, Run Tests, Run Verifications) do the same from the IDE.
 
+To find the orx modules a guide program needs, the plugin looks its imports up in
+`src/main/resources/orx/packages.properties`, because orx package names don't follow the module names
+(orx-jumpflood is `org.openrndr.extra.jumpfill`). After a new orx release, set `orxVersion` in `build.gradle.kts`,
+run `./gradlew updateOrxPackages` to regenerate the table from the orx jars, and commit it.
+
 The target IDE, which is also the lowest supported version, is `intellijIdea` in `gradle/libs.versions.toml`. The Kotlin features use the bundled Kotlin
 plugin, and the guide tab the Web Browser (JCEF) plugin, both as optional dependencies. Without them, the rest
 of the plugin still works, and the guide opens in IntelliJ's plain HTML tab.
@@ -224,10 +247,11 @@ The code is in `src/main/kotlin/org/openrndr/plugin/intellij/`, the tests in `sr
 | `NewOpenrndrProjectAction.kt` | New OPENRNDR Project |
 | `OpenrndrFileReferences.kt` | Asset path completion and navigation |
 | `OpenrndrGuideAction.kt`, `OpenrndrGuideBrowser.kt` | The guide tab |
+| `GuidePrograms.kt`, `OrxModules.kt`, `guide/run-buttons.js` | Running programs from the guide, adding missing orx modules |
 | `SketchEditGroup.kt`, `ShowProjectFolderAction.kt` | Editing and project folder buttons |
 | `OpenrndrColorProvider.kt`, `OpenrndrColorRuntime.kt` | Gutter swatches and color picker; evaluating colors with the project's OPENRNDR |
 | `OpenrndrColorCompletion.kt` | Completion swatches, sections and constructors |
 | `OpenrndrDebuggerColors.kt` | Debugger color previews |
 | `OpenrndrStructureInspection.kt` | Program structure checks and quick fixes |
 | `fileTemplates/internal/` | The OPENRNDR program template |
-| `src/test/kotlin/` | Tests for the color picker edits, the structure checks and completion sections |
+| `src/test/kotlin/` | Tests for the color picker edits, the structure checks, completion sections and running guide programs |

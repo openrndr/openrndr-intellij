@@ -22,6 +22,8 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
@@ -30,10 +32,12 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClassOwner
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.task.ProjectTaskManager
+import com.intellij.util.concurrency.AppExecutorUtil
 import javax.swing.Icon
 
 /**
@@ -50,59 +54,16 @@ class RunSketchAction : DumbAwareAction() {
     override fun update(e: AnActionEvent) {
         val project = e.project
         e.presentation.isVisible = project != null && OpenrndrModeAction.isOn
-        e.presentation.isEnabled = project != null && findSketch(project) != null
+        e.presentation.isEnabled = project != null && selectedFile(project)?.let { findSketch(project, it) } != null
     }
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        val sketch = findSketch(project) ?: return
-
-        FileDocumentManager.getInstance().saveAllDocuments()
-        // Compile first (the project's build setting decides how), then launch with IntelliJ's runner
-        ProjectTaskManager.getInstance(project).build(sketch.module).onSuccess { result ->
-            if (result.isAborted || result.hasErrors()) return@onSuccess
-            ApplicationManager.getApplication().invokeLater({ launch(project, sketch) }, project.disposed)
-        }
+        val file = selectedFile(project) ?: return
+        run(project, file)
     }
 
-    private fun launch(project: Project, sketch: Sketch) {
-        val executor = DefaultRunExecutor.getRunExecutorInstance()
-        try {
-            ExecutionEnvironmentBuilder.create(project, executor, SketchRunProfile(sketch)).buildAndExecute()
-        } catch (ex: ExecutionException) {
-            ExecutionUtil.handleExecutionError(project, executor.toolWindowId, sketch.name, ex)
-        }
-    }
-
-    /**
-     * The main class of the file selected in the editor, if the IDE can run that file.
-     * IntelliJ's own run configuration producers decide, so a Java `main`, a Kotlin `fun main()`
-     * and anything else that gets a gutter run icon all count. The configuration they produce
-     * is only read, never saved or run.
-     */
-    private fun findSketch(project: Project): Sketch? {
-        // The run configuration producers need the indexes; until indexing is done the button stays disabled
-        if (DumbService.isDumb(project)) return null
-        val file = FileEditorManager.getInstance(project).selectedEditor?.file ?: return null
-        val psi = PsiManager.getInstance(project).findFile(file) as? PsiClassOwner ?: return null
-        val module = ModuleUtilCore.findModuleForFile(file, project) ?: return null
-
-        // Producers are not cheap and update() runs often, so cache per file version
-        psi.getUserData(SKETCH_KEY)?.let { (stamp, sketch) -> if (stamp == psi.modificationStamp) return sketch }
-
-        val candidates = listOf(psi) + psi.classes
-        val params = candidates.firstNotNullOfOrNull { element ->
-            ConfigurationContext.createEmptyContextForLocation(PsiLocation(element))
-                .configurationsFromContext.orEmpty()
-                .firstNotNullOfOrNull { it.configuration as? CommonJavaRunConfigurationParameters }
-                ?.takeIf { !it.runClass.isNullOrBlank() }
-        }
-        val sketch = params?.let {
-            Sketch(module, it.runClass!!, file.nameWithoutExtension, it.vmParameters, it.programParameters)
-        }
-        psi.putUserData(SKETCH_KEY, psi.modificationStamp to sketch)
-        return sketch
-    }
+    private fun selectedFile(project: Project): VirtualFile? = FileEditorManager.getInstance(project).selectedEditor?.file
 
     private data class Sketch(
         val module: Module,
@@ -112,8 +73,73 @@ class RunSketchAction : DumbAwareAction() {
         val programParameters: String?,
     )
 
-    private companion object {
-        val SKETCH_KEY = Key.create<Pair<Long, Sketch?>>("openrndr.sketch")
+    companion object {
+        private val SKETCH_KEY = Key.create<Pair<Long, Sketch?>>("openrndr.sketch")
+
+        /**
+         * Compiles and runs the program in [file], or calls [onNotRunnable] when the IDE cannot run that file
+         * (see [findSketch]). Finding the main class reads the indexes, too slow for the UI thread, so it happens
+         * in the background once indexing is done.
+         */
+        fun run(project: Project, file: VirtualFile, onNotRunnable: () -> Unit = {}) {
+            ReadAction.nonBlocking<Sketch?> { findSketch(project, file) }
+                .inSmartMode(project)
+                .expireWith(project)
+                .finishOnUiThread(ModalityState.nonModal()) { sketch ->
+                    if (sketch == null) onNotRunnable() else buildAndLaunch(project, sketch)
+                }
+                .submit(AppExecutorUtil.getAppExecutorService())
+        }
+
+        private fun buildAndLaunch(project: Project, sketch: Sketch) {
+            FileDocumentManager.getInstance().saveAllDocuments()
+            // Compile first (the project's build setting decides how), then launch with IntelliJ's runner
+            ProjectTaskManager.getInstance(project).build(sketch.module).onSuccess { result ->
+                if (result.isAborted || result.hasErrors()) return@onSuccess
+                ApplicationManager.getApplication().invokeLater({ launch(project, sketch) }, project.disposed)
+            }
+        }
+
+        /** The main class [run] starts for [file]; null when the IDE cannot run that file. */
+        internal fun mainClass(project: Project, file: VirtualFile): String? = findSketch(project, file)?.mainClass
+
+        private fun launch(project: Project, sketch: Sketch) {
+            val executor = DefaultRunExecutor.getRunExecutorInstance()
+            try {
+                ExecutionEnvironmentBuilder.create(project, executor, SketchRunProfile(sketch)).buildAndExecute()
+            } catch (ex: ExecutionException) {
+                ExecutionUtil.handleExecutionError(project, executor.toolWindowId, sketch.name, ex)
+            }
+        }
+
+        /**
+         * The main class of [file], if the IDE can run that file.
+         * IntelliJ's own run configuration producers decide, so a Java `main`, a Kotlin `fun main()`
+         * and anything else that gets a gutter run icon all count. The configuration they produce
+         * is only read, never saved or run.
+         */
+        private fun findSketch(project: Project, file: VirtualFile): Sketch? {
+            // The run configuration producers need the indexes; until indexing is done the button stays disabled
+            if (DumbService.isDumb(project)) return null
+            val psi = PsiManager.getInstance(project).findFile(file) as? PsiClassOwner ?: return null
+            val module = ModuleUtilCore.findModuleForFile(file, project) ?: return null
+
+            // Producers are not cheap and update() runs often, so cache per file version
+            psi.getUserData(SKETCH_KEY)?.let { (stamp, sketch) -> if (stamp == psi.modificationStamp) return sketch }
+
+            val candidates = listOf(psi) + psi.classes
+            val params = candidates.firstNotNullOfOrNull { element ->
+                ConfigurationContext.createEmptyContextForLocation(PsiLocation(element))
+                    .configurationsFromContext.orEmpty()
+                    .firstNotNullOfOrNull { it.configuration as? CommonJavaRunConfigurationParameters }
+                    ?.takeIf { !it.runClass.isNullOrBlank() }
+            }
+            val sketch = params?.let {
+                Sketch(module, it.runClass!!, file.nameWithoutExtension, it.vmParameters, it.programParameters)
+            }
+            psi.putUserData(SKETCH_KEY, psi.modificationStamp to sketch)
+            return sketch
+        }
     }
 
     private class SketchRunProfile(private val sketch: Sketch) : ModuleRunProfile {
