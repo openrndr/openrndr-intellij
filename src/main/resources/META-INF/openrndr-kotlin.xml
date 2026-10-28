@@ -1,0 +1,29 @@
+<!-- Loaded only when the Kotlin plugin is installed -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Project-root paths in loadImage / loadFont / … arguments: Cmd+click, and completion
+             that pops up while typing and walks into folders -->
+        <psi.referenceContributor language="kotlin" implementation="org.openrndr.plugin.intellij.OpenrndrFileReferenceContributor"/>
+        <completion.contributor language="kotlin" order="first" implementationClass="org.openrndr.plugin.intellij.OpenrndrPathCompletion"/>
+        <completion.confidence language="kotlin" order="first" implementationClass="org.openrndr.plugin.intellij.OpenrndrPathCompletionConfidence"/>
+        <typedHandler implementation="org.openrndr.plugin.intellij.OpenrndrPathAutoPopup"/>
+
+        <!-- Gutter swatches, color picker and completion swatches for OPENRNDR colors -->
+        <colorProvider implementation="org.openrndr.plugin.intellij.OpenrndrColorProvider"/>
+        <!-- Must wrap Kotlin's own completion to decorate its items -->
+        <completion.contributor language="kotlin" order="first, before KotlinCompletionContributor" implementationClass="org.openrndr.plugin.intellij.OpenrndrColorCompletion"/>
+        <!-- Opens the filter list on `post(` inside compose { } -->
+        <typedHandler implementation="org.openrndr.plugin.intellij.PostFilterTypedHandler"/>
+
+        <!-- GLSL in fragmentTransform / vertexTransform / computeTransform (with the GLSL Support plugin), and a
+             banner suggesting that plugin while it is not installed -->
+        <multiHostInjector implementation="org.openrndr.plugin.intellij.OpenrndrGlslInjector"/>
+        <editorNotificationProvider implementation="org.openrndr.plugin.intellij.GlslPluginSuggestion"/>
+
+        <!-- Common mistakes in OPENRNDR program structure -->
+        <localInspection language="kotlin" shortName="OpenrndrStructure"
+                         displayName="OPENRNDR program structure" groupName="OPENRNDR"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="org.openrndr.plugin.intellij.OpenrndrStructureInspection"/>
+    </extensions>
+</idea-plugin>

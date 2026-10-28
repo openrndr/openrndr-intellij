@@ -1,0 +1,18 @@
+#if (${PACKAGE_NAME} && ${PACKAGE_NAME} != "")package ${PACKAGE_NAME}#end
+
+import org.openrndr.application
+
+fun main() = application {
+    configure {
+        width = 720
+        height = 720
+    }
+
+    program {
+
+        extend {
+
+        }
+
+    }
+}

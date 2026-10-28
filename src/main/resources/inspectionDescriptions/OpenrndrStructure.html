@@ -1,0 +1,28 @@
+<html>
+<body>
+Reports common mistakes in the structure of an OPENRNDR program:
+<ul>
+  <li><code>extend { }</code> inside another <code>extend { }</code>: the inner block runs every frame and adds a
+      new extension each time.</li>
+  <li><code>configure { }</code> inside <code>program { }</code>: the window has already been created, so the
+      configuration has no effect. It belongs in <code>application { }</code>, before <code>program { }</code>.</li>
+  <li>Loading images, fonts or videos, or creating other GPU resources (<code>colorBuffer</code>,
+      <code>renderTarget</code>, …), inside <code>application { }</code> but outside <code>program { }</code>:
+      there is no graphics context yet, so the program fails at startup.</li>
+  <li>Loading images, fonts, videos or SVG files inside <code>extend { }</code>: they are loaded again every
+      frame. Load them once in <code>program { }</code>, before <code>extend { }</code>.</li>
+</ul>
+<p>Example:</p>
+<pre><code>fun main() = application {
+    val image = loadImage("data/images/cheeta.jpg") // needs program { }
+
+    program {
+        configure { width = 720 }                   // belongs in application { }
+        extend {
+            extend { drawer.image(image) }          // adds an extension every frame
+            val font = loadFont("data/fonts/default.otf", 24.0) // loaded every frame
+        }
+    }
+}</code></pre>
+</body>
+</html>
