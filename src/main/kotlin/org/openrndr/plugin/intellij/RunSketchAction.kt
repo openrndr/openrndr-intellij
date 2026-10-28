@@ -26,6 +26,8 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.projectRoots.JavaSdk
+import com.intellij.openapi.projectRoots.JavaSdkVersion
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -114,6 +116,22 @@ class RunSketchAction : DumbAwareAction() {
 
     private companion object {
         val SKETCH_KEY = Key.create<Pair<Long, Sketch?>>("openrndr.sketch")
+        val GC_OPTION = Regex("""-XX:[+-]Use\w*GC""")
+
+        /**
+         * ZGC for short GC pauses (fewer dropped frames) and compact object headers for a smaller heap.
+         * Skipped when the run configuration's own VM options already pick a collector or set the headers;
+         * compact headers only on JDK 25+, where they are no longer experimental.
+         */
+        fun addPerformanceOptions(params: JavaParameters) {
+            val vm = params.vmParametersList
+            val options = vm.list
+            if (options.none { GC_OPTION.matches(it) }) vm.add("-XX:+UseZGC")
+            val version = params.jdk?.let { JavaSdk.getInstance().getVersion(it) }
+            if (version?.isAtLeast(JavaSdkVersion.JDK_25) == true && options.none { "CompactObjectHeaders" in it }) {
+                vm.add("-XX:+UseCompactObjectHeaders")
+            }
+        }
     }
 
     private class SketchRunProfile(private val sketch: Sketch) : ModuleRunProfile {
@@ -127,6 +145,7 @@ class RunSketchAction : DumbAwareAction() {
                     configureByModule(sketch.module, JavaParameters.JDK_AND_CLASSES_AND_TESTS)
                     mainClass = sketch.mainClass
                     vmParametersList.addParametersString(sketch.vmParameters)
+                    addPerformanceOptions(this)
                     programParametersList.addParametersString(sketch.programParameters)
                     workingDirectory = environment.project.basePath
                 }
