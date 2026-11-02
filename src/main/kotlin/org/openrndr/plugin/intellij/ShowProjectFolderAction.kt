@@ -10,7 +10,7 @@ import com.intellij.openapi.project.guessProjectDir
 import java.nio.file.Path
 
 /** Opens the project root in the system file manager (Finder on macOS). */
-class ShowProjectFolderAction : DumbAwareAction(AllIcons.Actions.MenuOpen) {
+class ShowProjectFolderAction : DumbAwareAction(AllIcons.Ide.External_link_arrow) {
 
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 

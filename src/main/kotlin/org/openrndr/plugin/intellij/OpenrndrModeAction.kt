@@ -18,6 +18,7 @@ import com.intellij.openapi.wm.ToolWindowManager
  *      to Search Everywhere plus sketch buttons (play runs only the current file), and hides the
  *      Navigate, Code, Refactor, Build, Run, Tools and Git menus; File | New only offers
  *      New OPENRNDR Project.
+ *      The project tree of an OPENRNDR project is reduced to the sketch's folders and Gradle files.
  * OFF: restores the UI settings that were active before.
  */
 class OpenrndrModeAction : ToggleAction() {
@@ -56,6 +57,7 @@ class OpenrndrModeAction : ToggleAction() {
 
         // 3. Main toolbar and menu bar: only what a sketch needs
         ActionGroupHider.updateAll()
+        OpenrndrProjectViewFilter.refreshAll()
 
         notify(project, "OPENRNDR Mode on. Press Ctrl+Alt+P again to restore your layout.")
     }
@@ -75,6 +77,7 @@ class OpenrndrModeAction : ToggleAction() {
 
         Snapshot.saved = null
         ActionGroupHider.updateAll()
+        OpenrndrProjectViewFilter.refreshAll()
     }
 
     private fun openToolWindowIds(project: Project): List<String> {

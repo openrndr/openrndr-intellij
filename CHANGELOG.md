@@ -18,6 +18,8 @@
   New OPENRNDR Project, the OPENRNDR guide in an editor tab and a clean console
 - Project Settings in OPENRNDR Mode: edit the project name, group and version, the OPENRNDR and orx versions
   and the snapshot repositories, then reload the Gradle project
+- Project button in OPENRNDR Mode that shows and hides the project tree; in OPENRNDR Mode the tree only shows
+  `data`, `src`, `gradle` and the Gradle build files
 
 ### Changed
 

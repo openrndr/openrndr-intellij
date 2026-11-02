@@ -48,6 +48,9 @@
 
         <notificationGroup id="OPENRNDR Mode" displayType="BALLOON"/>
 
+        <!-- In OPENRNDR Mode the project tree only shows data, src, gradle and the Gradle build files -->
+        <treeStructureProvider implementation="org.openrndr.plugin.intellij.OpenrndrProjectViewFilter"/>
+
         <!-- Color swatches for OPENRNDR colors in the debugger; first, ahead of Kotlin's class renderer -->
         <debugger.compoundRendererProvider implementation="org.openrndr.plugin.intellij.OpenrndrDebuggerColors" order="first"/>
     </extensions>
@@ -118,6 +121,11 @@
                 class="org.openrndr.plugin.intellij.OpenrndrModeGroup"
                 text="Project Folder">
             <separator/>
+            <action id="Openrndr.ToggleProjectView"
+                    class="org.openrndr.plugin.intellij.ToggleProjectViewAction"
+                    text="Project"
+                    description="Show or hide the project tree"
+                    icon="AllIcons.Toolwindows.ToolWindowProject"/>
             <action id="Openrndr.ShowProjectFolder"
                     class="org.openrndr.plugin.intellij.ShowProjectFolderAction"
                     text="Show Project Folder"
