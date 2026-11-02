@@ -77,6 +77,22 @@ class RunSketchAction : DumbAwareAction() {
 
     companion object {
         private val SKETCH_KEY = Key.create<Pair<Long, Sketch?>>("openrndr.sketch")
+        private val GC_OPTION = Regex("""-XX:[+-]Use\w*GC""")
+
+        /**
+         * ZGC for short GC pauses (fewer dropped frames) and compact object headers for a smaller heap.
+         * Skipped when the run configuration's own VM options already pick a collector or set the headers;
+         * compact headers only on JDK 25+, where they are no longer experimental.
+         */
+        private fun addPerformanceOptions(params: JavaParameters) {
+            val vm = params.vmParametersList
+            val options = vm.list
+            if (options.none { GC_OPTION.matches(it) }) vm.add("-XX:+UseZGC")
+            val version = params.jdk?.let { JavaSdk.getInstance().getVersion(it) }
+            if (version?.isAtLeast(JavaSdkVersion.JDK_25) == true && options.none { "CompactObjectHeaders" in it }) {
+                vm.add("-XX:+UseCompactObjectHeaders")
+            }
+        }
 
         /**
          * Compiles and runs the program in [file], or calls [onNotRunnable] when the IDE cannot run that file
@@ -141,46 +157,6 @@ class RunSketchAction : DumbAwareAction() {
             }
             psi.putUserData(SKETCH_KEY, psi.modificationStamp to sketch)
             return sketch
-        }
-        val candidates = listOf(psi) + psi.classes
-        val params = candidates.firstNotNullOfOrNull { element ->
-            ConfigurationContext.createEmptyContextForLocation(PsiLocation(element))
-                .configurationsFromContext.orEmpty()
-                .firstNotNullOfOrNull { it.configuration as? CommonJavaRunConfigurationParameters }
-                ?.takeIf { !it.runClass.isNullOrBlank() }
-        }
-        val sketch = params?.let {
-            Sketch(module, it.runClass!!, file.nameWithoutExtension, it.vmParameters, it.programParameters)
-        }
-        psi.putUserData(SKETCH_KEY, psi.modificationStamp to sketch)
-        return sketch
-    }
-
-    private data class Sketch(
-        val module: Module,
-        val mainClass: String,
-        val name: String,
-        val vmParameters: String?,
-        val programParameters: String?,
-    )
-
-    private companion object {
-        val SKETCH_KEY = Key.create<Pair<Long, Sketch?>>("openrndr.sketch")
-        val GC_OPTION = Regex("""-XX:[+-]Use\w*GC""")
-
-        /**
-         * ZGC for short GC pauses (fewer dropped frames) and compact object headers for a smaller heap.
-         * Skipped when the run configuration's own VM options already pick a collector or set the headers;
-         * compact headers only on JDK 25+, where they are no longer experimental.
-         */
-        fun addPerformanceOptions(params: JavaParameters) {
-            val vm = params.vmParametersList
-            val options = vm.list
-            if (options.none { GC_OPTION.matches(it) }) vm.add("-XX:+UseZGC")
-            val version = params.jdk?.let { JavaSdk.getInstance().getVersion(it) }
-            if (version?.isAtLeast(JavaSdkVersion.JDK_25) == true && options.none { "CompactObjectHeaders" in it }) {
-                vm.add("-XX:+UseCompactObjectHeaders")
-            }
         }
     }
 
