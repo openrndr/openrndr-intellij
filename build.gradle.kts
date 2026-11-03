@@ -54,8 +54,8 @@ dependencies {
         "org.openrndr.extra:orx-fx-jvm:0.5.0",
         "org.openrndr.extra:orx-parameters-jvm:0.5.0",
         "org.openrndr.extra:orx-shader-phrases-jvm:0.5.0",
-        "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0",
-        "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.11.0",
+        "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.12.0",
+        "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.12.0",
         "io.github.oshai:kotlin-logging-jvm:8.0.4",
     ).forEach { library ->
         testProjectLibraries(library)
