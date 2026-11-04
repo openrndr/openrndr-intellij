@@ -1,7 +1,7 @@
 [versions]
 junit = "4.13.2"
 opentest4j = "1.3.0"
-versions = "0.66.0"
+versions = "0.67.0"
 # The IDE to build against, test with and launch with `./gradlew runIde`; also the lowest supported version
 intellijIdea = "2026.2"
 
