@@ -32,8 +32,9 @@ import javax.swing.JComponent
  * guide.openrndr.org open in the tab itself; links to other sites open in the system browser.
  * (The platform's own HTML tab sends every clicked link to the system browser.)
  *
- * Each guide page gets a green play button on the code blocks that are whole programs, which runs the
- * program in the project ([GuidePrograms]).
+ * Guide pages get `window.openrndrIde.runProgram` (`guide/run-buttons.js`), which runs a program in the project
+ * ([GuidePrograms]). The guide itself adds the green play buttons that call it, on the code blocks that are whole
+ * programs.
  */
 object OpenrndrGuideBrowser {
     const val URL = "https://guide.openrndr.org"
@@ -68,16 +69,16 @@ object OpenrndrGuideBrowser {
     private class Editor(private val project: Project, private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
         private val browser = JBCefBrowser.createBuilder().build()
 
-        /** The play buttons call this with the block's position, the page title and the code, one per line. */
+        /** Called with the block's position, the page title and the code, one per line. */
         private val runQuery = JBCefJSQuery.create(browser as JBCefBrowserBase).also { Disposer.register(browser, it) }
 
-        /** The play buttons' script, calling [runQuery]. */
+        /** The script that gives the page `window.openrndrIde.runProgram`, calling [runQuery]. */
         private val runButtons = javaClass.getResource("/guide/run-buttons.js")!!.readText()
             .replace("RUN_PROGRAM", runQuery.inject("payload"))
 
         init {
             runQuery.addHandler { payload ->
-                // Only guide pages get the buttons; anything else calling in is ignored
+                // Only guide pages can run programs; anything else calling in is ignored
                 val (index, title, code) = payload.split('\n', limit = 3).takeIf { it.size == 3 } ?: return@addHandler null
                 val position = index.toIntOrNull() ?: return@addHandler null
                 if (!isGuide(browser.cefBrowser.url)) return@addHandler null

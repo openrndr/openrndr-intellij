@@ -205,6 +205,10 @@ Requires JDK 25. The Gradle daemon runs on JDK 25 too (`gradle/gradle-daemon-jvm
 
 The run configurations in `.run/` (Run Plugin, Run Tests, Run Verifications) do the same from the IDE.
 
+The guide draws the ▶ buttons itself (its `content.js`). The plugin only gives guide pages
+`window.openrndrIde.runProgram(index, title, code)`, described in `src/main/resources/guide/run-buttons.js`, so
+changes to the guide's markup or site generator need no plugin update as long as the guide keeps calling it.
+
 To find the orx modules a guide program needs, the plugin looks its imports up in
 `src/main/resources/orx/packages.properties`, because orx package names don't follow the module names
 (orx-jumpflood is `org.openrndr.extra.jumpfill`). After a new orx release, set `orxVersion` in `build.gradle.kts`,
