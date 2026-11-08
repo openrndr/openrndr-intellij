@@ -14,6 +14,7 @@
   plugin (suggested when missing)
 - Program structure inspection with quick fixes
 - Asset path completion and navigation in `loadImage`, `loadFont` and the other loaders
+- A Keys section with OPENRNDR's `KEY_*` constants after `it.key ==`, `it.key !=` and in `when (it.key) { }`
 - OPENRNDR Mode (View | OPENRNDR Mode): a minimal layout with play and stop buttons, New and Duplicate Program,
   New OPENRNDR Project, the OPENRNDR guide in an editor tab and a clean console
 - A ▶ button on the programs in the guide tab: copies the program into `src/main/kotlin/guide/` and runs it,

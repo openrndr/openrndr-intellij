@@ -52,6 +52,12 @@ import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
+import org.jetbrains.kotlin.psi.KtBinaryExpression
+import org.jetbrains.kotlin.psi.KtWhenConditionWithExpression
+import org.jetbrains.kotlin.psi.KtWhenExpression
+import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.analysis.api.resolution.successfulVariableAccessCall
+import org.jetbrains.kotlin.analysis.api.resolution.symbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotation
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
@@ -78,7 +84,8 @@ import java.awt.Color
  *   annotated with orx-parameters' `@DoubleParameter`, `@ColorParameter`, …;
  *   after a vector, its components, operators, geometry, queries, swizzles and conversions; after a List, Set, Map or
  *   String, a Spatial section for collections of vectors (`bounds`), then its common functions by kind (read, write, remove, sort, query, search, filter, map,
- *   random) and the rest of its API as assorted; after `mouse.` and `keyboard.`, properties and events; after any other value whose
+ *   random) and the rest of its API as assorted; after `mouse.` and `keyboard.`, properties and events; after `it.key ==`
+ *   or in `when (it.key) { }`, OPENRNDR's KEY_* constants in a Keys section; after any other value whose
  *   type has OPENRNDR `Event<…>` properties, those events.
  *   The headings use the
  *   platform's internal separator item, since its grouped completion drops headings as soon as items from other
@@ -133,6 +140,9 @@ class OpenrndrColorCompletion : CompletionContributor() {
             OpenrndrFilters.filterClasses(module).filter { call == "post" || it.is2to1 }
         }
         val filterNames = filters?.mapTo(HashSet()) { it.qualifiedName }
+        // `it.key == <caret>`, `it.key != …` and `when (it.key) { <caret> }`: OPENRNDR's KEY_* constants
+        val keys = if (isKeyComparison(file, parameters, qualified)) keyItems(module) else null
+        val keyNames = keys?.mapTo(HashSet()) { it.lookupString }
         // RenderTarget, ColorBuffer, DepthBuffer, VertexBuffer, IndexBuffer, the textures, Shader, ShadeStyle,
         // VertexFormat, Layer and Composite: that class's sections, after a value or as the receiver of a block
         // (`shadeStyle { }`, `compose { }`)
@@ -161,6 +171,7 @@ class OpenrndrColorCompletion : CompletionContributor() {
             }
         }
         val sections: Sections? = when {
+            keys != null -> Sections(listOf(KEYS)) { item -> item.getUserData(KEY_CONSTANT)?.let { 0 to it.coerceAtMost(98) } }
             filters != null && filterTitles != null -> {
                 val titles = if (filterCall == "blend") listOf(BLEND_MODES, FILTER_2TO1)
                 else filterTitles.values.filter { it != ASSORTED }.distinct().sorted() + ASSORTED
@@ -310,6 +321,8 @@ class OpenrndrColorCompletion : CompletionContributor() {
             constructorSignatures(file, receiver).map { constructorItem(receiver, it, receiverStart) }
         } else if (filters != null) {
             filters.mapNotNull { filterItem(module, it) }
+        } else if (keys != null) {
+            keys
         } else {
             emptyList()
         }
@@ -329,8 +342,8 @@ class OpenrndrColorCompletion : CompletionContributor() {
             val section = sections?.sectionIndex(element)
             if (section != null) {
                 val names = sectionMembers.getOrPut(section) { ConcurrentHashMap.newKeySet() }
-                names += element.lookupString
-                allSectioned += element.lookupString
+                names += element.allLookupStrings
+                allSectioned += element.allLookupStrings
                 // The heading goes out once an item of its section matches what is typed, as the list will show it
                 val heading = HeadingMatcher(matcher.prefix, names)
                 if (section !in headed && heading.prefixMatches(element.lookupString)) {
@@ -338,7 +351,7 @@ class OpenrndrColorCompletion : CompletionContributor() {
                     CompletionResult.wrap(SeparatorLookupElement(sections.titles[section]), heading, sorter)?.let(result::passResult)
                 }
             } else if (sections != null) {
-                rest += element.lookupString
+                rest += element.allLookupStrings
             }
             // A closing line after the last section, shown while there are items on both sides of it
             if (sections != null && !closed) {
@@ -357,6 +370,8 @@ class OpenrndrColorCompletion : CompletionContributor() {
             val name = item.lookupString
             // Kotlin's own rows for the listed filters (`BoxBlur()` by expected type) would show them twice
             if (filterNames != null && OpenrndrFilters.classOf(item.psiElement) in filterNames) return@runRemainingContributors
+            // Kotlin's own rows for the KEY_* constants would show them twice
+            if (keyNames != null && name in keyNames) return@runRemainingContributors
             val isPreset = members?.presets?.contains(name) ?: (receiver != null && CONSTANT.matches(name))
             val color: (() -> Color?)? = when {
                 receiver != null && isPreset -> { { constantColor(module, receiver, name) } }
@@ -589,6 +604,62 @@ class OpenrndrColorCompletion : CompletionContributor() {
         return analyze(position) {
             file.scopeContext(position).implicitReceivers.any { (it.type as? KaClassType)?.classId?.let(::binaryName) in LAYER_CLASSES }
         }
+    }
+
+    /**
+     * Whether completion is where a key code goes: the right side of `==` / `!=` with OPENRNDR's `KeyEvent.key` on
+     * the left (`it.key == ESC<caret>`), or a branch of `when (it.key) { }`. Only for a plain name, not `x.<caret>`.
+     */
+    private fun isKeyComparison(file: KtFile, parameters: CompletionParameters, qualified: KtDotQualifiedExpression?): Boolean {
+        if (qualified != null) return false
+        val reference = parameters.position.parent as? KtNameReferenceExpression ?: return false
+        val parent = reference.parent
+        val key = when {
+            parent is KtBinaryExpression && parent.right == reference &&
+                (parent.operationToken == KtTokens.EQEQ || parent.operationToken == KtTokens.EXCLEQ) -> parent.left
+            parent is KtWhenConditionWithExpression -> PsiTreeUtil.getParentOfType(parent, KtWhenExpression::class.java)?.subjectExpression
+            else -> null
+        } ?: return false
+        // `key` comes before the caret, so it has the same range in the original file
+        val range = key.textRange
+        val target = PsiTreeUtil.findElementOfClassAtRange(file, range.startOffset, range.endOffset, KtExpression::class.java) ?: return false
+        val name = (target as? KtDotQualifiedExpression)?.selectorExpression ?: target
+        if ((name as? KtNameReferenceExpression)?.getReferencedName() != "key") return false
+        return analyze(target) {
+            val symbol = target.resolveToCall()?.successfulVariableAccessCall()?.symbol as? KaPropertySymbol
+            symbol?.callableId?.classId?.let(::binaryName) == KEY_EVENT
+        }
+    }
+
+    /**
+     * OPENRNDR's KEY_* constants (`KEY_ESCAPE`, `KEY_SPACEBAR`, …) in declaration order, from `org.openrndr.KeysKt`.
+     * Picking one writes it and imports it. Null when the project's OPENRNDR has none.
+     */
+    private fun keyItems(module: Module): List<LookupElement>? {
+        val keys = JavaPsiFacade.getInstance(module.project)
+            .findClass(KEYS_CLASS, module.getModuleWithDependenciesAndLibrariesScope(false)) ?: return null
+        val names = keys.methods.mapNotNull { method -> method.name.removePrefix("get").takeIf { method.name.startsWith("getKEY_") } }.distinct()
+        return names.mapIndexed { i, name ->
+            // Also matched without `KEY_`, so `ESC` matches KEY_ESCAPE at a word start, like the list's best matches
+            LookupElementBuilder.create(name)
+                .withLookupString(name.removePrefix("KEY_"))
+                .withIcon(AllIcons.Nodes.Constant)
+                .withTailText(" (org.openrndr)", true)
+                .withTypeText("Int", true)
+                .withInsertHandler { context, _ ->
+                    val document = context.document
+                    val start = context.startOffset
+                    val text = "org.openrndr.$name"
+                    document.replaceString(start, context.tailOffset, text)
+                    val inserted = document.createRangeMarker(start, start + text.length)
+                    context.commitDocument()
+                    (context.file as? KtFile)?.let { ShortenReferencesFacility.getInstance().shorten(it, inserted.textRange) }
+                    PsiDocumentManager.getInstance(context.project).doPostponedOperationsAndUnblockDocument(document)
+                    context.editor.caretModel.moveToOffset(inserted.endOffset)
+                    inserted.dispose()
+                }
+                .also { it.putUserData(KEY_CONSTANT, i) }
+        }.takeIf { it.isNotEmpty() }
     }
 
     /**
@@ -1096,6 +1167,12 @@ class OpenrndrColorCompletion : CompletionContributor() {
         const val BLEND_MODES = "Blend Modes"
         const val FILTER_2TO1 = "Filter2to1"
         val FILTER_CLASS = Key.create<OpenrndrFilters.FilterClass>("openrndr.filterClass")
+
+        const val KEYS = "Keys"
+        const val KEY_EVENT = "org.openrndr.KeyEvent"
+        const val KEYS_CLASS = "org.openrndr.KeysKt"
+        /** A KEY_* constant's place in its section, in OPENRNDR's declaration order. */
+        val KEY_CONSTANT = Key.create<Int>("openrndr.keyConstant")
         private val LAYER_SECTIONS = listOf(
             "Draw" to listOf("draw", "mask"),
             "Layers" to listOf("layer", "aside"),

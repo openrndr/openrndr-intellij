@@ -265,6 +265,91 @@ class OpenrndrColorCompletionTest : LightJavaCodeInsightFixtureTestCase() {
         assertEquals("no empty Properties heading", listOf("## Events"), rows.filter { it.startsWith("## ") })
     }
 
+    fun `test key comparison gets a keys section`() {
+        if (JARS.none { it.first.contains("openrndr-application") }) return println("openrndr-application 0.5.0 not in the Gradle cache; skipped")
+        val typed = rowsAt(
+            """
+            import org.openrndr.KeyEvents
+
+            fun listen(keyboard: KeyEvents) {
+                keyboard.keyDown.listen {
+                    if (it.key == ESC<caret>) { }
+                }
+            }
+            """
+        )
+        println("key rows: " + typed.take(4))
+        assertEquals(listOf("## Keys", "KEY_ESCAPE"), typed.take(2))
+        assertEquals("KEY_ESCAPE once", 1, typed.count { it == "KEY_ESCAPE" })
+
+        val empty = rowsAt(
+            """
+            import org.openrndr.KeyEvents
+
+            fun listen(keyboard: KeyEvents) {
+                keyboard.keyDown.listen {
+                    if (it.key != <caret>) { }
+                }
+            }
+            """
+        )
+        println("key rows, nothing typed: " + empty.take(4))
+        assertEquals("OPENRNDR's order", listOf("## Keys", "KEY_SPACEBAR", "KEY_ESCAPE", "KEY_ENTER"), empty.take(4))
+
+        val branch = rowsAt(
+            """
+            import org.openrndr.KeyEvents
+
+            fun listen(keyboard: KeyEvents) {
+                keyboard.keyDown.listen {
+                    when (it.key) {
+                        KEY_A<caret>
+                    }
+                }
+            }
+            """
+        )
+        println("key rows in when: " + branch.take(4))
+        assertEquals("## Keys", branch.first())
+    }
+
+    fun `test picking a key imports it`() {
+        if (JARS.none { it.first.contains("openrndr-application") }) return println("openrndr-application 0.5.0 not in the Gradle cache; skipped")
+        rowsAt(
+            """
+            import org.openrndr.KeyEvents
+
+            fun listen(keyboard: KeyEvents) {
+                keyboard.keyDown.listen {
+                    if (it.key == ESC<caret>) { }
+                }
+            }
+            """
+        )
+        val lookup = myFixture.lookup ?: error("no completion list")
+        lookup.currentItem = lookup.items.first { it.lookupString == "KEY_ESCAPE" }
+        myFixture.finishLookup('\n')
+        val text = myFixture.editor.document.text
+        assertTrue("imported: $text", "import org.openrndr.KEY_ESCAPE" in text)
+        assertTrue("written: $text", "it.key == KEY_ESCAPE)" in text)
+    }
+
+    fun `test other comparisons get no keys section`() {
+        if (JARS.none { it.first.contains("openrndr-application") }) return println("openrndr-application 0.5.0 not in the Gradle cache; skipped")
+        val rows = rowsAt(
+            """
+            import org.openrndr.KeyEvents
+
+            fun listen(keyboard: KeyEvents) {
+                keyboard.keyDown.listen {
+                    if (it.name == ESC<caret>) { }
+                }
+            }
+            """
+        )
+        assertFalse("no Keys heading after it.name ==", "## Keys" in rows)
+    }
+
     fun `test any type with event properties gets an events section`() {
         if (JARS.none { it.first.contains("openrndr-event") }) return println("openrndr-event 0.5.0 not in the Gradle cache; skipped")
         val rows = rowsAt(
