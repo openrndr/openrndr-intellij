@@ -40,6 +40,7 @@
 - The Kotlin plugin and the JCEF browser are optional dependencies
 - Programs run from the OPENRNDR Mode play button use ZGC and, on Java 25 or later, compact object headers,
   unless the run configuration's VM options already choose a collector or set the headers
+- On macOS, programs run from the OPENRNDR Mode play button get `-XstartOnFirstThread`
 
 ## [1.2.7] - 2026-08-20
 

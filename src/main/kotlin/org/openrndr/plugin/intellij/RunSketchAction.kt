@@ -34,6 +34,7 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClassOwner
 import com.intellij.psi.PsiManager
@@ -93,6 +94,14 @@ class RunSketchAction : DumbAwareAction() {
                 vm.add("-XX:+UseCompactObjectHeaders")
             }
         }
+
+        /** On macOS the window has to be created on the process's first thread, so `main` runs there. */
+        private fun addPlatformOptions(params: JavaParameters) {
+            val vm = params.vmParametersList
+            if (SystemInfo.isMac && !vm.hasParameter(START_ON_FIRST_THREAD)) vm.add(START_ON_FIRST_THREAD)
+        }
+
+        private const val START_ON_FIRST_THREAD = "-XstartOnFirstThread"
 
         /**
          * Compiles and runs the program in [file], or calls [onNotRunnable] when the IDE cannot run that file
@@ -172,6 +181,7 @@ class RunSketchAction : DumbAwareAction() {
                     mainClass = sketch.mainClass
                     vmParametersList.addParametersString(sketch.vmParameters)
                     addPerformanceOptions(this)
+                    addPlatformOptions(this)
                     programParametersList.addParametersString(sketch.programParameters)
                     workingDirectory = environment.project.basePath
                 }
