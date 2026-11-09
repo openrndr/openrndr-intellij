@@ -7,6 +7,7 @@
 - Complete KEY_* constants in key comparisons
 - Change approach for the ▶ button. Detach it from the specific static-site generator used 
   to build the guide, so it can work with Jekyll, Zola or anything else. 
+- On macOS, programs run from the OPENRNDR Mode play button get `-XstartOnFirstThread`
 
 ## [2.0.0] - 2026-11-02
 
@@ -40,7 +41,6 @@
 - The Kotlin plugin and the JCEF browser are optional dependencies
 - Programs run from the OPENRNDR Mode play button use ZGC and, on Java 25 or later, compact object headers,
   unless the run configuration's VM options already choose a collector or set the headers
-- On macOS, programs run from the OPENRNDR Mode play button get `-XstartOnFirstThread`
 
 ## [1.2.7] - 2026-08-20
 
