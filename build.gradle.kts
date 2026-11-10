@@ -35,7 +35,7 @@ dependencies {
 // The OPENRNDR and orx jars, with sources for the KDoc checks, that the completion tests put in their test project.
 // The tests find them in the Gradle cache and skip themselves without them; resolving them here puts them there,
 // also on CI.
-val testProjectLibraries: Configuration by configurations.creating {
+val testProjectLibraries: Configuration = configurations.create("testProjectLibraries") {
     isTransitive = false
 }
 
@@ -55,8 +55,8 @@ dependencies {
         "org.openrndr.extra:orx-parameters-jvm:0.5.0",
         "org.openrndr.extra:orx-shader-phrases-jvm:0.5.0",
         "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0",
-        "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.11.0",
-        "io.github.oshai:kotlin-logging-jvm:8.0.4",
+        "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.12.0",
+        "io.github.oshai:kotlin-logging-jvm:8.0.7",
     ).forEach { library ->
         testProjectLibraries(library)
         testProjectLibraries("$library:sources")
