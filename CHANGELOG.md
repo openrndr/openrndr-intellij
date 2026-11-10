@@ -9,6 +9,11 @@
   to build the guide, so it can work with Jekyll, Zola or anything else. 
 - On macOS, programs run from the OPENRNDR Mode play button get `-XstartOnFirstThread`
 
+### Fixed
+
+- Clicking the gutter swatch of a color the picker cannot edit (`ColorLABa(…)`, `ColorOKLABa(…)`, …) no longer
+  opens a picker that does nothing; the swatch is no longer clickable
+
 ## [2.0.0] - 2026-11-02
 
 ### Added

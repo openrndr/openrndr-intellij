@@ -45,7 +45,7 @@ import java.math.RoundingMode
 /**
  * Gutter color swatches and the color picker for OPENRNDR colors in Kotlin: `ColorRGBa(…)`, `rgb(…)`,
  * `ColorRGBa.fromHex(…)`, `hsv(…)`, `hsl(…)`, named colors like `ColorRGBa.RED` and orx presets (picker), and
- * every other OPENRNDR/orx color model (swatch only).
+ * every other OPENRNDR/orx color model (swatch only, drawn by [OpenrndrReadOnlyColorMarkers]).
  *
  * - Expressions are recognised with the Kotlin Analysis API, only ever in the background (the gutter pass).
  * - Colors are computed by [OpenrndrColorRuntime] with the project's own OPENRNDR classes.
@@ -54,7 +54,16 @@ import java.math.RoundingMode
  */
 class OpenrndrColorProvider : ElementColorProvider {
 
-    override fun getColorFrom(element: PsiElement): Color? {
+    /**
+     * Only colors the picker can write back: the platform's swatch always opens the picker on click. Read-only
+     * swatches are drawn by [OpenrndrReadOnlyColorMarkers] instead, with no click action.
+     */
+    override fun getColorFrom(element: PsiElement): Color? = swatchOf(element)?.takeIf { it.edit != null }?.color
+
+    /** The color of a swatch the picker cannot edit (`ColorLABa(…)`, …), for [OpenrndrReadOnlyColorMarkers]. */
+    fun readOnlyColorOf(element: PsiElement): Color? = swatchOf(element)?.takeIf { it.edit == null }?.color
+
+    private fun swatchOf(element: PsiElement): Swatch? {
         val expression = candidate(element) ?: return null
         val project = expression.project
         if (!Openrndr.isProject(project)) return null
@@ -66,7 +75,7 @@ class OpenrndrColorProvider : ElementColorProvider {
         val cache = swatchCache(project)
         cache[key]?.let { cached ->
             element.putUserData(EDIT, cached.swatch?.edit)
-            return cached.swatch?.color
+            return cached.swatch
         }
         // Analysis is for the background gutter pass only, and needs the indexes
         if (ApplicationManager.getApplication().isDispatchThread || DumbService.isDumb(project)) return null
@@ -75,7 +84,7 @@ class OpenrndrColorProvider : ElementColorProvider {
         if (cache.size > MAX_CACHED) cache.clear()
         cache[key] = Cached(swatch)
         element.putUserData(EDIT, swatch?.edit)
-        return swatch?.color
+        return swatch
     }
 
     override fun setColorTo(element: PsiElement, color: Color) {
@@ -101,7 +110,7 @@ class OpenrndrColorProvider : ElementColorProvider {
      */
     fun colorOf(expression: KtExpression): Color? {
         val anchor = PsiTreeUtil.getDeepestFirst(expression)
-        return if (candidate(anchor) == expression) getColorFrom(anchor) else null
+        return if (candidate(anchor) == expression) swatchOf(anchor)?.color else null
     }
 
     // ---- Recognising color expressions ----------------------------------------------------------------------

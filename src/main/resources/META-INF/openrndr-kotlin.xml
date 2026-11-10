@@ -10,6 +10,8 @@
 
         <!-- Gutter swatches, color picker and completion swatches for OPENRNDR colors -->
         <colorProvider implementation="org.openrndr.plugin.intellij.OpenrndrColorProvider"/>
+        <!-- Swatches without the picker, for color models it cannot write back -->
+        <codeInsight.lineMarkerProvider language="kotlin" implementationClass="org.openrndr.plugin.intellij.OpenrndrReadOnlyColorMarkers"/>
         <!-- Must wrap Kotlin's own completion to decorate its items -->
         <completion.contributor language="kotlin" order="first, before KotlinCompletionContributor" implementationClass="org.openrndr.plugin.intellij.OpenrndrColorCompletion"/>
         <!-- Opens the filter list on `post(` inside compose { } -->

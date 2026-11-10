@@ -257,6 +257,7 @@ The code is in `src/main/kotlin/org/openrndr/plugin/intellij/`, the tests in `sr
 | `GuidePrograms.kt`, `OrxModules.kt`, `guide/run-buttons.js` | Running programs from the guide, adding missing orx modules |
 | `SketchEditGroup.kt`, `ShowProjectFolderAction.kt` | Editing and project folder buttons |
 | `OpenrndrColorProvider.kt`, `OpenrndrColorRuntime.kt` | Gutter swatches and color picker; evaluating colors with the project's OPENRNDR |
+| `OpenrndrReadOnlyColorMarkers.kt` | Swatches that are not clickable, for color models the picker cannot write back |
 | `OpenrndrColorCompletion.kt` | Completion swatches, sections and constructors |
 | `OpenrndrDebuggerColors.kt` | Debugger color previews |
 | `OpenrndrStructureInspection.kt` | Program structure checks and quick fixes |
