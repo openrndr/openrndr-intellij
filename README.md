@@ -89,6 +89,11 @@ OPENRNDR, and the Kotlin ones need the bundled Kotlin plugin.
   classes: stored fields are properties, functions returning colors are operations, `to…` functions convert,
   and the rest are queries. Each member shows the first sentence of its KDoc (when the library's sources are downloaded)
   instead of Kotlin's "for ColorRGBa in org.openrndr…" note.
+- **Swatches in completion** also show for color variables declared earlier in the same file.
+- **Debugger:** color values in Variables, Watches and inline values get a swatch, linearity included.
+
+### Code completion
+
 - **Completion after `drawer.`** is split into *Drawing properties* (`fill`, `stroke`, `strokeWeight`, `lineCap`,
   `lineJoin`, `drawStyle`, `width`, `height`, `bounds`, then the other style properties), *Transforms* (`view`, `projection`, `model`, `ortho`,
   `perspective`, `translate`, `rotate`, `scale`, then `lookAt`, push/pop and `isolated`), then the drawing
@@ -137,13 +142,6 @@ OPENRNDR, and the Kotlin ones need the bundled Kotlin plugin.
   `@IntParameter`, `@ColorParameter`, `@BooleanParameter`, `@ActionParameter`, …) come first in a *Parameters*
   section, in the annotations' `order`: a filter's `spread` and `gain`, a Layer's `enabled` and `invertMask`, your
   own settings classes. This works after a value and in a block whose receiver is that class.
-- **GLSL in shade and compute styles:** with the [GLSL Support](https://plugins.jetbrains.com/plugin/6993-glsl-support)
-  plugin installed, the strings assigned to `fragmentTransform`, `vertexTransform`, `geometryTransform` and
-  `computeTransform` (and the `…Preamble`s) are GLSL: highlighting, brace matching and GLSL completion. The
-  transforms are wrapped in `void main() { … }` with OPENRNDR's variables declared (`x_fill`, `va_position`,
-  `c_boundsPosition`, …, and `p_<name>` for `parameter("name", 1.0)` in the same block), so `x_fill.rgb`
-  completes, without the tinted background of injected code. Kotlin's `$name` / `${…}` in the string count as names. Without the plugin, a banner above files
-  with shader code offers to install it (or to dismiss the suggestion for good).
 - **Completion after a `Vector2`, `Vector3` or `Vector4`** is split into *Properties* (`x`, `y`, …), *Linear
   Operations* (shown as operators: `Vector2 + Vector2`, `Vector2 * Double`), *Geometry* (`normalized`,
   `perpendicular`, `rotate`, `mix`, `clamp`, …), *Query* (`length`, `dot`, `distanceTo`, …), *Swizzle* (`xy0`, `yx`,
@@ -171,8 +169,19 @@ OPENRNDR, and the Kotlin ones need the bundled Kotlin plugin.
 - **Completion after `keyboard.`** starts with *Events* (`keyDown`, `keyUp`, `keyRepeat`, `character`).
 - **Any other type with OPENRNDR `Event<…>` properties** (orx types, your own classes, inherited events included)
   gets an *Events* section at the top of its completion list.
-- **Swatches in completion** also show for color variables declared earlier in the same file.
-- **Debugger:** color values in Variables, Watches and inline values get a swatch, linearity included.
+- **Asset paths in OPENRNDR projects:** the path in `loadImage("…")`, `loadFont("…", …)`, `loadSVG("…")`,
+  `loadVideo("…")` and other loaders completes as you type, relative to the project root, which is where
+  sketches run. Picking a folder moves into it. Cmd+click opens the file.
+
+### GLSL in shade and compute styles
+
+With the [GLSL Support](https://plugins.jetbrains.com/plugin/6993-glsl-support)
+plugin installed, the strings assigned to `fragmentTransform`, `vertexTransform`, `geometryTransform` and
+`computeTransform` (and the `…Preamble`s) are GLSL: highlighting, brace matching and GLSL completion. The
+transforms are wrapped in `void main() { … }` with OPENRNDR's variables declared (`x_fill`, `va_position`,
+`c_boundsPosition`, …, and `p_<name>` for `parameter("name", 1.0)` in the same block), so `x_fill.rgb`
+completes, without the tinted background of injected code. Kotlin's `$name` / `${…}` in the string count as names. Without the plugin, a banner above files
+with shader code offers to install it (or to dismiss the suggestion for good).
 
 ### Program structure checks
 
@@ -185,12 +194,6 @@ An inspection (Settings → Editor → Inspections → OPENRNDR) warns about com
 | `configure { }` inside `program { }` (has no effect) | Move to `application { }` |
 | `loadImage`, `loadFont`, `colorBuffer`, … in `application { }` outside `program { }` (no graphics context yet) | Move into `program { }` |
 | `val x = loadImage(…)` and other loaders inside `extend { }` (loads every frame) | Load once before `extend { }` |
-
-### Other
-
-- **Asset paths in OPENRNDR projects:** the path in `loadImage("…")`, `loadFont("…", …)`, `loadSVG("…")`,
-  `loadVideo("…")` and other loaders completes as you type, relative to the project root, which is where
-  sketches run. Picking a folder moves into it. Cmd+click opens the file.
 
 ## Build & try it
 
