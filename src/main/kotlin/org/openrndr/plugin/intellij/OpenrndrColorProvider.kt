@@ -279,7 +279,8 @@ class OpenrndrColorProvider : ElementColorProvider {
     private fun editFor(symbol: KaFunctionSymbol, types: List<String>): Edit? {
         val name = when (symbol) {
             is KaConstructorSymbol -> symbol.containingClassId?.asFqNameString()
-            is KaNamedFunctionSymbol -> symbol.callableId?.let { "${it.packageName}.${it.callableName}" }
+            // With the class for members: `org.openrndr.color.ColorRGBa.Companion.fromHex`
+            is KaNamedFunctionSymbol -> symbol.callableId?.asSingleFqName()?.asString()
             else -> null
         }
         val alpha = symbol.valueParameters.getOrNull(3)?.name?.asString()
