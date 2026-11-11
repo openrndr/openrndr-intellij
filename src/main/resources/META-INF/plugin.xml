@@ -57,6 +57,11 @@
         <!-- In OPENRNDR Mode the project tree only shows data, src, gradle and the Gradle build files -->
         <treeStructureProvider implementation="org.openrndr.plugin.intellij.OpenrndrProjectViewFilter"/>
 
+        <!-- In OPENRNDR Mode the gutter run icon (and any other Run of an Application or Kotlin configuration)
+             runs like the play button, with the sketch console; ahead of Gradle, which would take over the run -->
+        <projectTaskRunner implementation="org.openrndr.plugin.intellij.SketchProjectTaskRunner" id="openrndrSketch"
+                           order="first, before gradle"/>
+
         <!-- Color swatches for OPENRNDR colors in the debugger; first, ahead of Kotlin's class renderer -->
         <debugger.compoundRendererProvider implementation="org.openrndr.plugin.intellij.OpenrndrDebuggerColors" order="first"/>
     </extensions>

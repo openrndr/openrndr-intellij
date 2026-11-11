@@ -7,8 +7,11 @@ import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.JavaCommandLineState
 import com.intellij.execution.configurations.JavaParameters
+import com.intellij.execution.configurations.ModuleBasedConfiguration
 import com.intellij.execution.configurations.ModuleRunProfile
+import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
+import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.process.ProcessHandler
@@ -16,6 +19,7 @@ import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.runners.ExecutionUtil
+import com.intellij.execution.runners.ProgramRunner
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -68,12 +72,14 @@ class RunSketchAction : DumbAwareAction() {
 
     private fun selectedFile(project: Project): VirtualFile? = FileEditorManager.getInstance(project).selectedEditor?.file
 
-    private data class Sketch(
+    internal data class Sketch(
         val module: Module,
         val mainClass: String,
         val name: String,
         val vmParameters: String?,
         val programParameters: String?,
+        val envs: Map<String, String> = emptyMap(),
+        val passParentEnvs: Boolean = true,
     )
 
     companion object {
@@ -116,6 +122,37 @@ class RunSketchAction : DumbAwareAction() {
                     if (sketch == null) onNotRunnable() else buildAndLaunch(project, sketch)
                 }
                 .submit(AppExecutorUtil.getAppExecutorService())
+        }
+
+        /**
+         * The sketch an Application or Kotlin run configuration starts, or null for any other run profile.
+         * Lets OPENRNDR Mode run those configurations (e.g. from the gutter) the way the play button does,
+         * see [SketchProjectTaskRunner].
+         */
+        internal fun sketchOf(profile: RunProfile): Sketch? {
+            val params = profile as? CommonJavaRunConfigurationParameters ?: return null
+            val module = (profile as? ModuleBasedConfiguration<*, *>)?.configurationModule?.module ?: return null
+            val mainClass = params.runClass?.takeIf { it.isNotBlank() } ?: return null
+            return Sketch(
+                module, mainClass, profile.name, params.vmParameters, params.programParameters,
+                params.envs, params.isPassParentEnvs,
+            )
+        }
+
+        /**
+         * An environment that, once executed, compiles and runs [sketch] like the play button does.
+         * The run itself gets its own environment, so the console is the sketch console.
+         */
+        internal fun launchEnvironment(project: Project, executor: Executor, sketch: Sketch): ExecutionEnvironment =
+            ExecutionEnvironmentBuilder.create(project, executor, SketchRunProfile(sketch)).runner(SketchLauncher).build()
+
+        private object SketchLauncher : ProgramRunner<RunnerSettings> {
+            override fun getRunnerId() = "OpenrndrSketchLauncher"
+            override fun canRun(executorId: String, profile: RunProfile) = profile is SketchRunProfile
+            override fun execute(environment: ExecutionEnvironment) {
+                val profile = environment.runProfile as? SketchRunProfile ?: return
+                buildAndLaunch(environment.project, profile.sketch)
+            }
         }
 
         private fun buildAndLaunch(project: Project, sketch: Sketch) {
@@ -162,14 +199,17 @@ class RunSketchAction : DumbAwareAction() {
                     ?.takeIf { !it.runClass.isNullOrBlank() }
             }
             val sketch = params?.let {
-                Sketch(module, it.runClass!!, file.nameWithoutExtension, it.vmParameters, it.programParameters)
+                Sketch(
+                    module, it.runClass!!, file.nameWithoutExtension, it.vmParameters, it.programParameters,
+                    it.envs, it.isPassParentEnvs,
+                )
             }
             psi.putUserData(SKETCH_KEY, psi.modificationStamp to sketch)
             return sketch
         }
     }
 
-    private class SketchRunProfile(private val sketch: Sketch) : ModuleRunProfile {
+    private class SketchRunProfile(val sketch: Sketch) : ModuleRunProfile {
         override fun getName() = sketch.name
         override fun getIcon(): Icon = AllIcons.Actions.Execute
         override fun getModules(): Array<Module> = arrayOf(sketch.module)
@@ -183,6 +223,8 @@ class RunSketchAction : DumbAwareAction() {
                     addPerformanceOptions(this)
                     addPlatformOptions(this)
                     programParametersList.addParametersString(sketch.programParameters)
+                    env = sketch.envs
+                    isPassParentEnvs = sketch.passParentEnvs
                     workingDirectory = environment.project.basePath
                 }
 
